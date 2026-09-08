@@ -1,0 +1,279 @@
+diff -ru '--exclude=node_modules' '--exclude=dist' ./ATTRIBUTION.md /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/ATTRIBUTION.md
+--- ./ATTRIBUTION.md	2026-09-05 19:42:38.000000000 +0800
++++ /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/ATTRIBUTION.md	2026-09-06 11:35:10.982228625 +0800
+@@ -11,3 +11,4 @@
+ No external fonts, analytics, iframes, runtime APIs or CDN-hosted assets are used by this prototype.
+ 
+ - OpenAI Codex: UI refinement of existing navigation, home chapter overlays, Wiki index, article reading layout, responsive styles and keyboard access on 2026-09-05. Scientific page data and scene assets were retained. Human review is pending; no scientific review or browser visual verification is claimed.
++- Anthropic Claude: front-end performance changes on 2026-09-06 — deferred loading of the Rapier physics module, `three`/`rapier` build-chunk split, half-rate directional shadow updates, render-loop pause on hidden tabs, GPU resource disposal on unmount, and fewer React re-renders during the scroll journey. No scientific content, scene geometry, physics behaviour or dependency versions were changed. `tsc`, ESLint and the production build pass; browser and device verification are pending. The `/responsible-ai` page still lists only the earlier model and must be updated by the team.
+diff -ru '--exclude=node_modules' '--exclude=dist' ./.gitignore /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/.gitignore
+--- ./.gitignore	2026-09-05 19:33:02.000000000 +0800
++++ /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/.gitignore	2026-09-06 11:33:15.225232040 +0800
+@@ -22,6 +22,11 @@
+ .DS_Store
+ *.pem
+ 
++# local env (copy .env.example to .env)
++.env
++.env.local
++.env.*.local
++
+ # debug
+ npm-debug.log*
+ yarn-debug.log*
+diff -ru '--exclude=node_modules' '--exclude=dist' ./src/DunaWorld.tsx /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/src/DunaWorld.tsx
+--- ./src/DunaWorld.tsx	2026-09-05 19:41:28.000000000 +0800
++++ /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/src/DunaWorld.tsx	2026-09-06 11:32:49.756232792 +0800
+@@ -11,7 +11,7 @@
+ import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+ import { FontLoader, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
+ import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json";
+-import { RoutePhysics, type RoutePhysicsInput } from "./route-physics";
++import type { RoutePhysics, RoutePhysicsInput } from "./route-physics";
+ 
+ type HeaderProps = { light?: boolean };
+ 
+@@ -731,6 +731,24 @@
+   scene.add(object);
+ }
+ 
++// The scene is rebuilt from scratch on every mount, so a client-side route
++// change away from "/" and back would otherwise leak every geometry, material
++// and texture on the GPU. Release them when the world unmounts.
++function releaseSceneResources(scene: THREE.Scene) {
++  scene.traverse((object) => {
++    const mesh = object as THREE.Mesh;
++    if (mesh.geometry) mesh.geometry.dispose();
++    const material = mesh.material;
++    if (!material) return;
++    for (const entry of Array.isArray(material) ? material : [material]) {
++      for (const value of Object.values(entry)) {
++        if (value instanceof THREE.Texture) value.dispose();
++      }
++      entry.dispose();
++    }
++  });
++}
++
+ function WikiTerminal({ ready }: { ready: boolean }) {
+   const [activeKey, setActiveKey] = useState(panelGroups[0].key);
+   const activeGroup = panelGroups.find((group) => group.key === activeKey) ?? panelGroups[0];
+@@ -796,7 +814,12 @@
+ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+   const journey = useRef<HTMLElement>(null);
+   const mount = useRef<HTMLDivElement>(null);
+-  const [progress, setProgress] = useState(0);
++  const routeBar = useRef<HTMLDivElement>(null);
++  // The animation loop advances a continuous scroll value every frame; React
++  // only needs the four journey milestones, so it re-renders at most four times
++  // across the whole drive instead of ten times per second.
++  const stageRef = useRef(0);
++  const [stage, setStage] = useState(0);
+   const [quality, setQuality] = useState<"webgl" | "fallback">("webgl");
+   const [openingComplete, setOpeningComplete] = useState(() => {
+     if (typeof window === "undefined") return false;
+@@ -885,6 +908,11 @@
+     sun.shadow.camera.right = 28;
+     sun.shadow.camera.top = 28;
+     sun.shadow.camera.bottom = -28;
++    // The terrain and every prop are static; only the vehicle moves. Drive the
++    // shadow map manually at half the frame rate rather than re-rendering the
++    // whole depth pass every frame.
++    sun.shadow.autoUpdate = false;
++    sun.shadow.needsUpdate = true;
+     scene.add(sun);
+ 
+     const ground = new THREE.Mesh(
+@@ -1073,22 +1101,28 @@
+     const physicsStartTangent = curve.getTangentAt(0.001).normalize();
+     let routePhysics: RoutePhysics | null = null;
+     let physicsCancelled = false;
+-    void RoutePhysics.create(
+-      physicsStart,
+-      Math.atan2(physicsStartTangent.x, physicsStartTangent.z),
+-      [
+-        ...miniAlgae.map((actor): RoutePhysicsInput => ({
+-          object: actor.object,
+-          home: actor.home,
+-          kind: "algae",
+-          collider: { type: "ball", radius: 0.48 },
+-        })),
+-        ...wordmarkInputs,
+-      ],
+-    ).then((physics) => {
+-      if (physicsCancelled) physics.dispose();
+-      else routePhysics = physics;
+-    });
++    const physicsInputs: RoutePhysicsInput[] = [
++      ...miniAlgae.map((actor): RoutePhysicsInput => ({
++        object: actor.object,
++        home: actor.home,
++        kind: "algae",
++        collider: { type: "ball", radius: 0.48 },
++      })),
++      ...wordmarkInputs,
++    ];
++    // Rapier ships the physics engine as an inlined WebAssembly payload; keeping
++    // it out of the main world chunk and loading it here means the scene paints
++    // before the ~megabyte module is fetched and compiled.
++    void import("./route-physics")
++      .then((module) => module.RoutePhysics.create(
++        physicsStart,
++        Math.atan2(physicsStartTangent.x, physicsStartTangent.z),
++        physicsInputs,
++      ))
++      .then((physics) => {
++        if (physicsCancelled) physics.dispose();
++        else routePhysics = physics;
++      });
+     const miniAlgaeIndexes = new Map<THREE.Object3D, number>(
+       miniAlgae.map((actor, index) => [actor.object, index]),
+     );
+@@ -1302,6 +1336,10 @@
+     const animate = () => {
+       if (disposed) return;
+       requestAnimationFrame(animate);
++      // A backgrounded tab still fires rAF on some platforms; skip the physics
++      // step and the WebGL draw until it is visible again. The clamped delta
++      // below absorbs the long gap on the first frame back.
++      if (document.hidden) return;
+       const delta = Math.min(clock.getDelta(), 0.04);
+       const remaining = targetProgress - currentProgress;
+       currentProgressVelocity += (
+@@ -1543,7 +1581,21 @@
+       collisionSide *= Math.exp(-6.4 * delta);
+ 
+       frameCount += 1;
+-      if (frameCount % 6 === 0) setProgress(currentProgress);
++      const nextStage = currentProgress > 0.982
++        ? 3
++        : currentProgress > 0.9
++          ? 2
++          : currentProgress > 0.025
++            ? 1
++            : 0;
++      if (nextStage !== stageRef.current) {
++        stageRef.current = nextStage;
++        setStage(nextStage);
++      }
++      if (frameCount % 12 === 0) {
++        routeBar.current?.setAttribute("aria-valuenow", String(Math.round(currentProgress * 100)));
++      }
++      if (frameCount % 2 === 0) sun.shadow.needsUpdate = true;
+       renderer.render(scene, camera);
+     };
+     animate();
+@@ -1556,6 +1608,7 @@
+       impactParticleGeometry.dispose();
+       window.removeEventListener("scroll", updateScrollProgress);
+       window.removeEventListener("resize", resize);
++      releaseSceneResources(scene);
+       renderer.dispose();
+       renderer.domElement.remove();
+     };
+@@ -1582,7 +1635,7 @@
+       id="main-content"
+       tabIndex={-1}
+       ref={journey}
+-      className={`duna-world${openingComplete ? " is-opening-complete" : ""}${progress > 0.025 ? " is-started" : ""}${progress > 0.9 ? " is-arriving" : ""}${progress > 0.982 ? " is-panel-ready" : ""}`}
++      className={`duna-world${openingComplete ? " is-opening-complete" : ""}${stage >= 1 ? " is-started" : ""}${stage >= 2 ? " is-arriving" : ""}${stage >= 3 ? " is-panel-ready" : ""}`}
+     >
+       {!openingComplete && (
+         <div className="duna-opening" role="status" aria-label="DunaTerp opening sequence">
+@@ -1606,7 +1659,7 @@
+       <div className="duna-sticky">
+         <div ref={mount} className="duna-stage" aria-label="A scroll-driven 3D journey through the DunaTerp project" />
+ 
+-        <section className="world-intro" inert={!openingComplete || progress > 0.025}>
++        <section className="world-intro" inert={!openingComplete || stage >= 1}>
+           <div className="intro-coordinate" aria-hidden="true">
+             <span>SCU–CHINA / CHENGDU</span>
+             <span>iGEM 2026 / DUNATERP</span>
+@@ -1627,14 +1680,22 @@
+           </div>
+         </section>
+ 
+-        <div className="world-route" aria-label={`Journey progress ${Math.round(progress * 100)} percent`}>
+-          <span style={{ width: `${progress * 100}%` }} />
++        <div
++          ref={routeBar}
++          className="world-route"
++          role="progressbar"
++          aria-label="Journey progress"
++          aria-valuemin={0}
++          aria-valuemax={100}
++          aria-valuenow={0}
++        >
++          <span style={{ width: "calc(var(--journey-progress, 0) * 100%)" }} />
+           {chapters.map((chapter) => (
+             <i key={chapter.n} style={{ left: `${chapter.t * 100}%`, background: chapter.c }} />
+           ))}
+         </div>
+ 
+-        <WikiTerminal ready={progress > 0.982} />
++        <WikiTerminal ready={stage >= 3} />
+ 
+         <button
+           className="restart-drive"
+diff -ru '--exclude=node_modules' '--exclude=dist' ./UI-REVIEW.md /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/UI-REVIEW.md
+--- ./UI-REVIEW.md	2026-09-05 19:44:42.000000000 +0800
++++ /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/UI-REVIEW.md	2026-09-06 11:35:35.659227897 +0800
+@@ -45,6 +45,34 @@
+ 3. **统一科学插图。** 在团队确认内容后，为代谢流程、工程循环和硬件流程建立共同的字体、线宽、图例和产物颜色。不要为美观添加未经验证的数据。
+ 4. **清理旧样式。** 现有 styles.css 含多个历史版本覆盖规则；本轮采用独立覆盖文件降低场景回归风险。视觉验收后可逐步整理为导航、文章、世界、终点面板模块。
+ 
++## 性能改动 — 2026-09-06
++
++在上一轮源码基础上做的前端性能优化，未改动科学内容、场景几何、物理行为和依赖版本。
++
++| 问题 | 改动 |
++| --- | --- |
++| Rapier 以内联 WASM 形式打进 3D 主包，首屏需下载约 2.4 MB（gzip 约 0.9 MB）才能开始 | `route-physics.ts` 改为动态 `import()`，物理引擎单独成 chunk，在场景绘制后再加载 |
++| `three` 与应用代码同包，内容改动会使其缓存失效 | `vite.config.ts` 增加 `manualChunks`，`three`（gzip 约 167 KB）、`rapier` 独立成长缓存 chunk |
++| 单方向光阴影每帧重算，场景除车辆外全静态 | `sun.shadow.autoUpdate = false`，动画循环内每 2 帧触发一次 `needsUpdate` |
++| 后台标签页仍执行物理步进与 WebGL 绘制 | 动画循环在 `document.hidden` 时跳过；`clock` 增量仍按 0.04 s 上限钳制 |
++| 卸载时只释放 renderer 与两个几何体，场景内上百个 geometry/material/texture 泄漏；SPA 往返首页会累积 GPU 内存 | 卸载时 `scene.traverse` 释放全部几何体、材质与贴图 |
++| 滚动期间每 6 帧 `setProgress` 触发整棵组件树重渲染（约 10 次/秒） | 改为四段里程碑状态，全程最多重渲染 4 次；进度条宽度走 `--journey-progress` CSS 变量，进度百分比用 `role="progressbar"` + 命令式更新 `aria-valuenow` |
++| `.env` 与 `.env.example` 内容相同且未被忽略 | `.gitignore` 增加 `.env` 及本地变体 |
++
++### 已验证与限制
++
++- `npx tsc`、`npm run lint`、`npm run build` 均通过。
++- 构建产物分包：`three` 629 KB（gzip 167 KB）、`rapier` 2.40 MB（gzip 903 KB，改为按需加载）、`DunaWorld` 31 KB、主包 251 KB（gzip 81 KB）。
++- 未做浏览器、设备实测：阴影降频、隐藏标签暂停、滚动重渲染的视觉与交互效果需在真机验收；`rapier` 延迟加载后，用户在物理就绪前开始滚动的过渡表现需实测。
++- 本机 Node 为 20.17，低于 `engines` 要求的 20.19（Vite 8 需要），构建时会告警；CI 使用 Node 22 不受影响。
++
++### 建议下一轮
++
++1. 首页 3D 仍随 `three`（gzip 167 KB）一起加载；可评估裁剪 `TextGeometry`/`FontLoader`（仅开场字标使用，可复用现有 canvas 贴图方案）与 helvetiker 字体子集化。
++2. 判分内容页改为构建期预渲染（`site-data.ts` 为纯数据，`Article` 为纯函数组件），生成真正的静态 HTML，替代 CI 里手动复制 `index.html`。
++3. `prefers-reduced-motion` 目前仅跳过开场动画，场景仍完整初始化；可在该设置下直接走静态回退页，不创建 WebGL。
++4. `styles.css` 与 `ui-refinements.css` 两层覆盖，视觉验收后合并去死规则。
++
+ ## 本地查看
+ 
+ 需要 Node.js 20.19+。进入源码目录，执行 `npm ci`、`npm run dev`，打开终端显示地址下的 `/scu-china/` 路径。原项目的 GitHub Actions 会在 main 更新后按仓库路径发布；本轮没有推送或触发该流程。
+diff -ru '--exclude=node_modules' '--exclude=dist' ./vite.config.ts /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/vite.config.ts
+--- ./vite.config.ts	2026-09-05 19:33:02.000000000 +0800
++++ /data4/01.projects/USER002/01.xiongxin/DunaTerp-UI-Source/dunaterp-wiki/vite.config.ts	2026-09-06 11:33:58.281230770 +0800
+@@ -14,5 +14,20 @@
+   return {
+     base: normalizedBase.endsWith("/") ? normalizedBase : `${normalizedBase}/`,
+     plugins: [react()],
++    build: {
++      target: "es2022",
++      rollupOptions: {
++        output: {
++          // Keep the large 3D and physics dependencies in their own long-lived
++          // chunks so a content edit does not invalidate them, and so the
++          // physics engine can be fetched only once the scene asks for it.
++          manualChunks: (id: string) => {
++            if (id.includes("node_modules/three")) return "three";
++            if (id.includes("node_modules/@dimforge/rapier3d")) return "rapier";
++            return undefined;
++          },
++        },
++      },
++    },
+   };
+ });

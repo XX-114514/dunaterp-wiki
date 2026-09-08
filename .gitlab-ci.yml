@@ -1,0 +1,24 @@
+image: node:22
+
+pages:
+  stage: build
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - .npm/
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run build
+    - cp -a dist/. public/
+    - echo '/* /index.html 200' > public/_redirects
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always

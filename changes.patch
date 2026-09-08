@@ -1,0 +1,598 @@
+diff --git a/ATTRIBUTION.md b/ATTRIBUTION.md
+index f8cc7ae..1a44544 100644
+--- a/ATTRIBUTION.md
++++ b/ATTRIBUTION.md
+@@ -9,3 +9,5 @@
+ - OpenAI Codex (GPT-5 family): website scaffolding, interface code, navigation, accessibility structure and clearly marked copy drafts on 2026-08-15. See `/responsible-ai`.
+ 
+ No external fonts, analytics, iframes, runtime APIs or CDN-hosted assets are used by this prototype.
++
++- OpenAI Codex: UI refinement of existing navigation, home chapter overlays, Wiki index, article reading layout, responsive styles and keyboard access on 2026-09-05. Scientific page data and scene assets were retained. Human review is pending; no scientific review or browser visual verification is claimed.
+diff --git a/UI-REVIEW.md b/UI-REVIEW.md
+new file mode 100644
+index 0000000..f8b59de
+--- /dev/null
++++ b/UI-REVIEW.md
+@@ -0,0 +1,52 @@
++# DunaTerp UI refinement — 2026-09-05
++
++本轮基于 wangyinuo001/dunaterp-wiki 的 main（f880a4de43fa9db6572bac87a241c7832bfe73d4）开发。检查依据是仓库源码；未进行浏览器截图、实机交互或性能测量。线上网站未更新。
++
++## 设计判断
++
++保留盐湖场景、3D 滚动旅程、DunaTerp 字标及深绿／荧光绿／橙色识别。用更清晰的正文层级承接首页的视觉表现。首页承担项目叙事，内容页承担科学证据阅读。
++
++| 源码中发现的问题 | 本轮实现 |
++| --- | --- |
++| 六段滚动章节只有 aria-label，缺少可见内容 | 显示现有章节标题、说明和原有目的页入口；深绿底衬、章节色细线增强辨识 |
++| 首屏只能开始旅程，直接阅读入口较弱 | 增加“Read the project”直达项目介绍，保留原有旅程 |
++| 导航、标签和操作按钮大量使用约 8–12px 字号 | 常用控件采用 14–16px，正文 16–18px；扩大点击区域 |
++| 大标题行高低至 0.67，容易挤压字形 | 调整首屏及内页标题行高、字距和断行 |
++| 菜单缺少当前页状态，打开后不便关闭 | 增加当前页标识、互斥菜单、外部点击关闭、Escape 关闭和焦点返回 |
++| 手机导航为一长列链接 | 按 Wet Lab、Dry Lab、Human Practices、People 分组，限制菜单高度并可滚动 |
++| 内容页只有大标题和连续段落 | 增加面包屑、桌面侧栏目录、手机页内目录，收窄正文宽度，统一图注和提示块 |
++| Wiki 索引的入口层级较弱 | 用四个分类面板、页数、分类介绍和统一链接行组织已有 14 个页面 |
++| 滚动终点面板透明时仍可被键盘聚焦 | 隐藏期间设置 inert，面板出现后恢复交互 |
++| 开始旅程后返回顶部仍保留 started 状态 | 用滚动进度判断首屏显示状态，恢复顶部介绍 |
++
++## 修改范围
++
++- `src/App.tsx`：导航、索引、内容页模板、加载界面及路由标题／焦点行为。
++- `src/DunaWorld.tsx`：可见章节、阅读入口、返回顶部和隐藏面板的交互处理。
++- `src/ui-refinements.css`：独立样式覆盖，便于与已有场景样式区分及回退。
++- `src/main.tsx`：加载 UI 样式。
++- `ATTRIBUTION.md`：记录此次 AI 辅助界面修改，人工审核待完成。
++
++现有科学内容、图片、Three.js 场景、物理逻辑、依赖版本及锁文件均保留。
++
++## 已验证与限制
++
++- TypeScript 编译与 Vite 生产构建通过。
++- 按 GitHub Pages 的 `/dunaterp-wiki/` 路径构建通过，入口资源存在。
++- 14 个内容页、导航和场景中的目的页、科学图文件均通过静态存在性检查。
++- `git diff --check` 通过。
++- 尚未进行桌面、手机或键盘浏览器实测；上述响应式和无障碍改动是已实现行为，不能等同于通过实机验收。
++- 构建仍提示 3D chunk 较大：约 3.07 MB，gzip 后约 1.08 MB。这是打包体积，不是实测加载时间。
++
++## 建议下一轮的优先顺序
++
++1. **浏览器验收。** 在 390px 手机、768px 平板、1440px 桌面以及短屏横向设备验证首屏、滚动章节和终点面板；检查 200% 字体缩放、键盘导航、返回顶部和弱网加载。
++2. **3D 性能。** 评估将物理引擎与场景分包、按需加载，以及低性能设备的简化场景。用真实设备测量首屏可见时间、交互延迟、帧率，再决定优化方案。
++3. **统一科学插图。** 在团队确认内容后，为代谢流程、工程循环和硬件流程建立共同的字体、线宽、图例和产物颜色。不要为美观添加未经验证的数据。
++4. **清理旧样式。** 现有 styles.css 含多个历史版本覆盖规则；本轮采用独立覆盖文件降低场景回归风险。视觉验收后可逐步整理为导航、文章、世界、终点面板模块。
++
++## 本地查看
++
++需要 Node.js 20.19+。进入源码目录，执行 `npm ci`、`npm run dev`，打开终端显示地址下的 `/scu-china/` 路径。原项目的 GitHub Actions 会在 main 更新后按仓库路径发布；本轮没有推送或触发该流程。
++
++本源码包同时附有 `changes.patch`，可在原仓库用 `git apply --check changes.patch` 先检查兼容性，再用 `git apply changes.patch` 应用。若原仓库有后续修改，请先合并差异，避免直接覆盖。
+diff --git a/src/App.tsx b/src/App.tsx
+index cd5f243..5e1cae6 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,39 +1,114 @@
+-import { lazy, Suspense, useEffect } from "react";
++import { lazy, Suspense, useEffect, useRef } from "react";
+ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+ import { navigation, pageOrder, pages, type WikiPage } from "./site-data";
+ 
+ const DunaWorld = lazy(() => import("./DunaWorld").then((module) => ({ default: module.DunaWorld })));
+ 
+ function Header({ light = false }: { light?: boolean }) {
+-  return <header className={`site-header${light ? " site-header--light" : ""}`}><Link className="brand" to="/" aria-label="DunaTerp home"><span className="brand-mark" aria-hidden="true">D</span><span>DunaTerp <small>SCU–CHINA · 2026</small></span></Link><nav className="desktop-nav" aria-label="Primary navigation">{navigation.map((group) => <details key={group.label}><summary>{group.label}</summary><div className="nav-popover">{group.items.map(([label, href]) => <Link key={href} to={href}>{label}</Link>)}</div></details>)}<Link className="nav-index" to="/wiki-map">Wiki map</Link></nav><details className="mobile-menu"><summary aria-label="Open navigation">Menu</summary><div>{navigation.flatMap((group) => group.items).map(([label, href]) => <Link key={href} to={href}>{label}</Link>)}<Link to="/wiki-map">Wiki map</Link></div></details></header>;
++  const header = useRef<HTMLElement>(null);
++  const { pathname } = useLocation();
++  useEffect(() => {
++    const node = header.current;
++    if (!node) return;
++    const close = () => node.querySelectorAll("details[open]").forEach((item) => item.removeAttribute("open"));
++    const outside = (event: PointerEvent) => { if (!node.contains(event.target as Node)) close(); };
++    const escape = (event: KeyboardEvent) => {
++      if (event.key !== "Escape") return;
++      const active = document.activeElement?.closest("details[open]");
++      close();
++      active?.querySelector("summary")?.focus();
++    };
++    close();
++    document.addEventListener("pointerdown", outside);
++    document.addEventListener("keydown", escape);
++    return () => {
++      document.removeEventListener("pointerdown", outside);
++      document.removeEventListener("keydown", escape);
++    };
++  }, [pathname]);
++  return <header ref={header} className={`site-header${light ? " site-header--light" : ""}`}>
++    <Link className="brand" to="/" aria-label="DunaTerp home"><span className="brand-mark" aria-hidden="true">D</span><span>DunaTerp<small>SCU–CHINA · 2026</small></span></Link>
++    <nav className="desktop-nav" aria-label="Primary navigation">
++      {navigation.map((group) => <details key={group.label} name="desktop-navigation">
++        <summary className={group.items.some(([, href]) => href === pathname) ? "is-current" : undefined}>{group.label}<span aria-hidden="true">⌄</span></summary>
++        <div className="nav-popover"><p>{group.label}</p>{group.items.map(([label, href]) => <Link key={href} to={href} aria-current={pathname === href ? "page" : undefined}>{label}<span aria-hidden="true">↗</span></Link>)}</div>
++      </details>)}
++      <Link className="nav-index" to="/wiki-map" aria-current={pathname === "/wiki-map" ? "page" : undefined}>Explore Wiki <span aria-hidden="true">↗</span></Link>
++    </nav>
++    <details className="mobile-menu"><summary>Menu <span aria-hidden="true">☰</span></summary><nav aria-label="Mobile navigation">
++      {navigation.map((group) => <div className="mobile-nav-group" key={group.label}><p>{group.label}</p>{group.items.map(([label, href]) => <Link key={href} to={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}</div>)}
++      <Link className="mobile-map-link" to="/wiki-map">Explore all pages ↗</Link>
++    </nav></details>
++  </header>;
+ }
+ 
+ function Footer() {
+-  return <footer className="site-footer"><div><p className="footer-brand">DunaTerp · SCU-China 2026</p><p>A modular carotenoid-derivative platform in <i>Dunaliella salina</i>.</p></div><div className="footer-links"><a href="https://gitlab.igem.org/2026/scu-china">Team GitLab</a><a href="https://creativecommons.org/licenses/by/4.0/">Content: CC BY 4.0</a><Link to="/attributions">Attributions</Link><Link to="/responsible-ai">Responsible AI</Link></div></footer>;
++  return <footer className="site-footer"><div><p className="footer-brand">DunaTerp<span aria-hidden="true">.</span></p><p>A modular carotenoid-derivative platform in <i>Dunaliella salina</i>.</p><small>SCU–CHINA / iGEM 2026</small></div><div className="footer-links"><a href="https://gitlab.igem.org/2026/scu-china">Team GitLab ↗</a><a href="https://creativecommons.org/licenses/by/4.0/">Content: CC BY 4.0 ↗</a><Link to="/attributions">Attributions</Link><Link to="/responsible-ai">Responsible AI</Link></div></footer>;
+ }
+ 
+ function Status({ status }: { status: WikiPage["status"] }) {
+-  const labels = { "team-draft":"Team-review draft", "structure-only":"Team input required", "review-ready":"Reviewed" };
++  const labels = { "team-draft": "Team-review draft", "structure-only": "Team input required", "review-ready": "Reviewed" };
+   return <span className={`status status--${status}`}>{labels[status]}</span>;
+ }
+ 
++const groupDescriptions = [
++  "From the biological idea to experiments and evidence.",
++  "Understand the system, its constraints and its possibilities.",
++  "Connect project decisions with people and the environment.",
++  "Meet the team and discover the work behind the project.",
++];
++
+ function WikiMap() {
+-  return <><Header/><main className="map-page"><p className="page-eyebrow">All routes</p><h1>Wiki map</h1><p className="map-intro">The immersive homepage is optional. Every judging-relevant destination below has a stable, direct URL and remains usable without animation.</p><div className="map-grid">{navigation.map((group)=><section key={group.label}><p>{group.label}</p>{group.items.map(([label,href])=><Link key={href} to={href}><span>{label}</span><b aria-hidden="true">↗</b></Link>)}</section>)}</div><div className="compliance-note"><strong>2026 compliance architecture</strong><p>iGEM-hosted assets, reproducible source build, fixed judging URLs, visible licence and repository links, explicit attribution, keyboard access, reduced-motion support and a public AI-use record.</p></div></main><Footer/></>;
++  return <><Header /><main id="main-content" tabIndex={-1} className="map-page">
++    <header className="map-heading"><div><p className="page-eyebrow">DUNATERP / PROJECT INDEX</p><h1>Explore the<br /><em>whole spectrum.</em></h1></div><p className="map-intro">Follow the science, explore the evidence, and meet the people behind DunaTerp. Every chapter starts here.</p></header>
++    <div className="map-grid">{navigation.map((group, index) => <section key={group.label} className={`map-group map-group--${index}`}><header><span className="map-number">0{index + 1}</span><span>{String(group.items.length).padStart(2, "0")} PAGES</span></header><h2>{group.label}</h2><p className="map-description">{groupDescriptions[index]}</p><div className="map-links">{group.items.map(([label, href]) => <Link key={href} to={href}><span>{label}</span><b aria-hidden="true">↗</b></Link>)}</div></section>)}</div>
++    <div className="map-return"><span>Start with the story.</span><Link to="/">Return to the salt route <span aria-hidden="true">↗</span></Link></div>
++  </main><Footer /></>;
+ }
+ 
+-function Article({ slug }: { slug:string }) {
+-  const page=pages[slug]; if(!page) return <Navigate to="/wiki-map" replace/>;
+-  const index=pageOrder.indexOf(slug); const nextSlug=pageOrder[(index+1)%pageOrder.length]; const next=pages[nextSlug];
+-  const figureSrc=page.figure?`${import.meta.env.BASE_URL}${page.figure.src.replace(/^\//,"")}`:"";
+-  return <><Header/><main className="article-page"><header className="article-hero"><div><p className="page-eyebrow">{page.eyebrow}</p><h1>{page.title}</h1></div><div className="article-intro"><Status status={page.status}/><p>{page.intro}</p></div></header>{page.figure&&<figure className="feature-figure"><img src={figureSrc} alt={page.figure.alt}/><figcaption>{page.figure.caption}</figcaption></figure>}<div className="article-sections">{page.sections.map((section,i)=><section key={section.title}><div className="section-number">{String(i+1).padStart(2,"0")}</div><div>{section.eyebrow&&<p className="section-eyebrow">{section.eyebrow}</p>}<h2>{section.title}</h2><p>{section.body}</p>{section.items&&<ul>{section.items.map((item)=><li key={item}>{item}</li>)}</ul>}{section.note&&<aside>{section.note}</aside>}</div></section>)}</div><aside className="review-banner"><span>Publication gate</span><p>Before Wiki Freeze, a named team reviewer must verify claims, citations, figures, licences, alt text and correspondence with the official judging form.</p></aside><Link className="next-page" to={`/${nextSlug}`}><span>Next route</span><strong>{next.title}</strong><b aria-hidden="true">→</b></Link></main><Footer/></>;
++function Article({ slug }: { slug: string }) {
++  const page = pages[slug];
++  if (!page) return <Navigate to="/wiki-map" replace />;
++  const index = pageOrder.indexOf(slug);
++  const nextSlug = pageOrder[(index + 1) % pageOrder.length];
++  const next = pages[nextSlug];
++  const group = navigation.find((item) => item.items.some(([, href]) => href === `/${slug}`));
++  const figureSrc = page.figure ? `${import.meta.env.BASE_URL}${page.figure.src.replace(/^\//, "")}` : "";
++  return <><Header /><main id="main-content" tabIndex={-1} className="article-page">
++    <nav className="breadcrumbs" aria-label="Breadcrumb"><Link to="/wiki-map">Wiki</Link><span aria-hidden="true">/</span><span>{group?.label}</span><span aria-hidden="true">/</span><span aria-current="page">{group?.items.find(([, href]) => href === `/${slug}`)?.[0]}</span></nav>
++    <header className="article-hero"><div><p className="page-eyebrow">{page.eyebrow}</p><h1>{page.title}</h1></div><div className="article-intro"><Status status={page.status} /><p>{page.intro}</p></div></header>
++    <div className="article-layout"><aside className="article-toc"><p>ON THIS PAGE</p><nav aria-label="On this page">{page.sections.map((section, i) => <a key={section.title} href={`#section-${i + 1}`}><span>{String(i + 1).padStart(2, "0")}</span>{section.title}</a>)}</nav><Link className="toc-map" to="/wiki-map">All chapters ↗</Link></aside>
++      <div className="article-body">{page.figure && <figure className="feature-figure"><img src={figureSrc} alt={page.figure.alt} loading="lazy" decoding="async" /><figcaption>{page.figure.caption}</figcaption></figure>}
++        <div className="article-sections">{page.sections.map((section, i) => <section id={`section-${i + 1}`} tabIndex={-1} key={section.title}><div className="section-number">{String(i + 1).padStart(2, "0")}</div><div>{section.eyebrow && <p className="section-eyebrow">{section.eyebrow}</p>}<h2>{section.title}</h2><p>{section.body}</p>{section.items && <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}{section.note && <aside>{section.note}</aside>}</div></section>)}</div>
++        <aside className="review-banner"><span>Team review</span><p>Before Wiki Freeze, a named team reviewer must verify claims, citations, figures, licences, alt text and correspondence with the official judging form.</p></aside>
++        <Link className="next-page" to={`/${nextSlug}`}><span>CONTINUE EXPLORING</span><strong>{next.title}</strong><b aria-hidden="true">↗</b></Link>
++      </div>
++    </div>
++  </main><Footer /></>;
+ }
+ 
+ function ScrollAndTitle() {
+-  const location=useLocation();
+-  useEffect(()=>{ window.scrollTo(0,0); const slug=location.pathname.replace(/^\//,""); document.title=slug&&pages[slug]?`${pages[slug].title} · DunaTerp`:slug==="wiki-map"?"Wiki map · DunaTerp":"DunaTerp · SCU-China 2026"; },[location.pathname]);
++  const { pathname, hash } = useLocation();
++  useEffect(() => {
++    const slug = pathname.replace(/^\//, "");
++    document.title = slug && pages[slug] ? `${pages[slug].title} · DunaTerp` : slug === "wiki-map" ? "Explore the Wiki · DunaTerp" : "DunaTerp · SCU-China 2026";
++    const frame = requestAnimationFrame(() => {
++      if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
++      else {
++        window.scrollTo(0, 0);
++        document.getElementById("main-content")?.focus({ preventScroll: true });
++      }
++    });
++    return () => cancelAnimationFrame(frame);
++  }, [pathname, hash]);
+   return null;
+ }
+ 
+ export default function App() {
+-  return <><ScrollAndTitle/><Routes><Route path="/" element={<Suspense fallback={<div className="world-loading">Preparing the salt flats…</div>}><DunaWorld Header={Header}/></Suspense>}/><Route path="/wiki-map" element={<WikiMap/>}/>{pageOrder.map((slug)=><Route key={slug} path={`/${slug}`} element={<Article slug={slug}/>}/>) }<Route path="*" element={<Navigate to="/wiki-map" replace/>}/></Routes></>;
++  return <><a className="skip-link" href="#main-content">Skip to content</a><ScrollAndTitle /><Routes>
++    <Route path="/" element={<Suspense fallback={<><Header /><main id="main-content" tabIndex={-1} className="world-loading"><p className="page-eyebrow">SCU–CHINA / iGEM 2026</p><h1>DunaTerp.</h1><p role="status">Preparing the salt route…</p><Link to="/wiki-map">Explore the Wiki ↗</Link></main></>}><DunaWorld Header={Header} /></Suspense>} />
++    <Route path="/wiki-map" element={<WikiMap />} />
++    {pageOrder.map((slug) => <Route key={slug} path={`/${slug}`} element={<Article slug={slug} />} />)}
++    <Route path="*" element={<Navigate to="/wiki-map" replace />} />
++  </Routes></>;
+ }
+diff --git a/src/DunaWorld.tsx b/src/DunaWorld.tsx
+index c6c7460..4dbfc7d 100644
+--- a/src/DunaWorld.tsx
++++ b/src/DunaWorld.tsx
+@@ -731,12 +731,12 @@ function addProp(
+   scene.add(object);
+ }
+ 
+-function WikiTerminal() {
++function WikiTerminal({ ready }: { ready: boolean }) {
+   const [activeKey, setActiveKey] = useState(panelGroups[0].key);
+   const activeGroup = panelGroups.find((group) => group.key === activeKey) ?? panelGroups[0];
+ 
+   return (
+-    <section className="wiki-terminal" aria-label="DunaTerp Wiki navigation panel">
++    <section className="wiki-terminal" inert={!ready} aria-label="DunaTerp Wiki navigation panel">
+       <nav className="terminal-tabs" aria-label="Wiki sections">
+         {panelGroups.map((group) => (
+           <button
+@@ -796,7 +796,6 @@ function WikiTerminal() {
+ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+   const journey = useRef<HTMLElement>(null);
+   const mount = useRef<HTMLDivElement>(null);
+-  const [started, setStarted] = useState(false);
+   const [progress, setProgress] = useState(0);
+   const [quality, setQuality] = useState<"webgl" | "fallback">("webgl");
+   const [openingComplete, setOpeningComplete] = useState(() => {
+@@ -1564,7 +1563,7 @@ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+ 
+   if (quality === "fallback") {
+     return (
+-      <main className="webgl-fallback">
++      <main id="main-content" tabIndex={-1} className="webgl-fallback">
+         <Header />
+         <h1>Interactive world unavailable</h1>
+         <p>This device cannot start WebGL. The complete Wiki remains available through the standard page map.</p>
+@@ -1574,15 +1573,16 @@ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+   }
+ 
+   const beginJourney = () => {
+-    setStarted(true);
+     const top = journey.current?.offsetTop ?? 0;
+-    window.scrollTo({ top: top + window.innerHeight * 0.92, behavior: "smooth" });
++    window.scrollTo({ top: top + window.innerHeight * 0.92, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+   };
+ 
+   return (
+     <main
++      id="main-content"
++      tabIndex={-1}
+       ref={journey}
+-      className={`duna-world${openingComplete ? " is-opening-complete" : ""}${started || progress > 0.025 ? " is-started" : ""}${progress > 0.9 ? " is-arriving" : ""}${progress > 0.982 ? " is-panel-ready" : ""}`}
++      className={`duna-world${openingComplete ? " is-opening-complete" : ""}${progress > 0.025 ? " is-started" : ""}${progress > 0.9 ? " is-arriving" : ""}${progress > 0.982 ? " is-panel-ready" : ""}`}
+     >
+       {!openingComplete && (
+         <div className="duna-opening" role="status" aria-label="DunaTerp opening sequence">
+@@ -1606,7 +1606,7 @@ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+       <div className="duna-sticky">
+         <div ref={mount} className="duna-stage" aria-label="A scroll-driven 3D journey through the DunaTerp project" />
+ 
+-        <section className="world-intro">
++        <section className="world-intro" inert={!openingComplete || progress > 0.025}>
+           <div className="intro-coordinate" aria-hidden="true">
+             <span>SCU–CHINA / CHENGDU</span>
+             <span>iGEM 2026 / DUNATERP</span>
+@@ -1622,7 +1622,7 @@ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+             <div><strong>β-C</strong><span>Shared hub</span></div>
+           </div>
+           <div className="intro-start">
+-            <button type="button" onClick={beginJourney}>Enter the salt route <span>↓</span></button>
++            <div className="intro-actions"><button type="button" onClick={beginJourney}>Enter the salt route <span aria-hidden="true">↓</span></button><Link to="/project-description">Read the project <span aria-hidden="true">↗</span></Link></div>
+             <span>Scroll to drive</span>
+           </div>
+         </section>
+@@ -1634,12 +1634,12 @@ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+           ))}
+         </div>
+ 
+-        <WikiTerminal />
++        <WikiTerminal ready={progress > 0.982} />
+ 
+         <button
+           className="restart-drive"
+           type="button"
+-          onClick={() => window.scrollTo({ top: journey.current?.offsetTop ?? 0, behavior: "smooth" })}
++          onClick={() => window.scrollTo({ top: journey.current?.offsetTop ?? 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" })}
+           aria-label="Return to the beginning"
+         >
+           ↑
+@@ -1648,12 +1648,13 @@ export function DunaWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
+ 
+       <div className="duna-scroll-story">
+         <div className="duna-scroll-lead" aria-hidden="true" />
+-        {chapters.map((chapter) => (
++        {chapters.map((chapter, index) => (
+           <section
+             key={chapter.n}
+-            className="duna-scroll-segment"
+-            aria-label={`${chapter.n}. ${chapter.kicker}. ${chapter.title}. ${chapter.body}`}
+-          />
++            className={`duna-scroll-segment duna-scroll-chapter${index % 2 ? " is-right" : ""}`}
++            style={{ "--chapter-accent": chapter.c } as CSSProperties}
++            aria-labelledby={`chapter-${chapter.n}`}
++          ><div><p><span>{chapter.n} / 06</span>{chapter.kicker}</p><h2 id={`chapter-${chapter.n}`}>{chapter.title}</h2><p>{chapter.body}</p><Link to={chapter.link}>Explore this chapter <span aria-hidden="true">↗</span></Link></div></section>
+         ))}
+         <div className="duna-terminal-space" aria-hidden="true" />
+       </div>
+diff --git a/src/main.tsx b/src/main.tsx
+index 1e04850..d48943f 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
+ import { BrowserRouter } from "react-router-dom";
+ import App from "./App";
+ import "./styles.css";
++import "./ui-refinements.css";
+ 
+ ReactDOM.createRoot(document.getElementById("root")!).render(
+   <React.StrictMode><BrowserRouter basename={import.meta.env.BASE_URL}><App /></BrowserRouter></React.StrictMode>,
+diff --git a/src/ui-refinements.css b/src/ui-refinements.css
+new file mode 100644
+index 0000000..9e3ce4e
+--- /dev/null
++++ b/src/ui-refinements.css
+@@ -0,0 +1,273 @@
++/* Salt to spectrum: shared typography, readable surfaces and clear navigation.
++   Kept separate from the original scene styles so the 3D world remains intact. */
++:root {
++  --ink: #123c32;
++  --deep: #082c26;
++  --cream: #fafbf6;
++  --salt: #edf3e8;
++  --lime: #c9f66b;
++  --orange: #e86f32;
++  --line: #d8e1d8;
++  --muted: #51675d;
++}
++html { scroll-padding-top: 7rem; }
++body { font-size: 1rem; line-height: 1.6; }
++button, summary, input { font: inherit; }
++a, button, summary { touch-action: manipulation; }
++:focus-visible { outline: 3px solid #da6830; outline-offset: 5px; }
++main:focus:not(:focus-visible) { outline: none; }
++.skip-link { border-radius: .5rem; font-size: 1rem; z-index: 1100; }
++.site-header {
++  position: sticky; top: 0; height: 90px;
++  padding-inline: clamp(1.25rem, 4vw, 5rem);
++  background: rgba(250,251,246,.96); border-bottom: 1px solid var(--line);
++  backdrop-filter: blur(18px);
++}
++.brand { font-size: 1.5rem; gap: .8rem; letter-spacing: -.045em; }
++.brand small { font-size: .75rem; line-height: 1.2; letter-spacing: .1em; margin-top: .4rem; }
++.brand-mark { width: 2.8rem; height: 2.8rem; background: var(--ink); color: var(--lime); font-size: 1.65rem; }
++.desktop-nav { gap: .35rem; }
++.desktop-nav summary, .nav-index { min-height: 44px; font-size: .875rem; font-weight: 650; padding: .7rem .9rem; }
++.desktop-nav summary { display: flex; align-items: center; gap: .55rem; }
++.desktop-nav summary span { transition: transform .18s; }
++.desktop-nav details[open] summary span { transform: rotate(180deg); }
++.desktop-nav summary.is-current { box-shadow: inset 0 -2px var(--orange); }
++.site-header .nav-index { background: var(--ink); color: white; margin-left: .8rem; padding-inline: 1.25rem; }
++.site-header .nav-index:hover { background: #245340; color: white; }
++.nav-index span { margin-left: .7rem; }
++.site-header--light { background: rgba(5,35,30,.88); border-color: rgba(255,255,255,.17); color: #fff; }
++.site-header--light .brand-mark { background: var(--lime); color: var(--ink); border-color: var(--lime); }
++.site-header--light .nav-index { background: var(--lime); color: var(--ink); }
++.site-header--light .nav-index:hover { background: #dcff98; color: var(--ink); }
++.nav-popover { min-width: 255px; padding: .65rem; border-radius: 1rem; box-shadow: 0 20px 50px #082c2624; }
++.nav-popover p { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: .6rem .8rem; }
++.nav-popover a { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: .9375rem; min-height: 46px; font-weight: 500; }
++.nav-popover a span { color: var(--muted); }
++.nav-popover a[aria-current="page"] { background: var(--salt); font-weight: 750; }
++.page-eyebrow, .section-eyebrow { font-size: .8125rem; line-height: 1.5; letter-spacing: .12em; font-weight: 700; color: #41663a; }
++.article-page, .map-page { width: min(1280px, calc(100% - 5rem)); padding: 3rem 0 6rem; }
++.breadcrumbs { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 3.5rem; color: var(--muted); font-size: .875rem; }
++.breadcrumbs a { text-decoration: none; }
++.breadcrumbs a:hover { text-decoration: underline; }
++.breadcrumbs span[aria-current] { color: var(--ink); }
++.article-hero { grid-template-columns: minmax(0,1.25fr) minmax(0,.8fr); gap: 4rem; padding-bottom: 3.5rem; align-items: center; }
++.article-hero h1, .map-page h1 { font-size: clamp(2.9rem,6vw,6.5rem); font-weight: 400; line-height: 1.04; letter-spacing: -.05em; overflow-wrap: anywhere; }
++.article-intro>p { font-size: 1.125rem; line-height: 1.75; color: var(--muted); }
++.status { font-size: .75rem; letter-spacing: .04em; padding: .5rem .75rem; font-weight: 700; }
++.status--team-draft { color: #30523b; background: #e9f0df; }
++.status--structure-only { color: #7a461a; background: #fff0d8; }
++.status--review-ready { color: #12553b; background: #d9f2dd; }
++.article-layout { display: grid; grid-template-columns: 235px minmax(0,1fr); gap: clamp(2rem,5vw,5rem); padding-top: 3rem; align-items: start; }
++.article-toc { position: sticky; top: 8rem; padding-right: 1.25rem; }
++.article-toc>p { font-size: .75rem; font-weight: 750; letter-spacing: .14em; color: var(--muted); margin: 0 0 1rem; }
++.article-toc nav { display: grid; }
++.article-toc nav a { display: grid; grid-template-columns: 1.6rem 1fr; gap: .5rem; text-decoration: none; font-size: .875rem; line-height: 1.5; padding: .85rem .5rem; border-left: 2px solid var(--line); }
++.article-toc nav a span { font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
++.article-toc nav a:hover, .article-toc nav a:focus-visible { border-left-color: var(--orange); background: var(--salt); }
++.toc-map { display: inline-block; margin-top: 1.5rem; font-size: .875rem; text-decoration: none; border-bottom: 1px solid var(--line); }
++.article-body { min-width: 0; }
++.article-sections { margin: 0; }
++.article-sections>section { grid-template-columns: 2.5rem minmax(0,1fr); gap: 1.4rem; padding: 3rem 0; scroll-margin-top: 7rem; }
++.article-sections>section:first-child { padding-top: .35rem; }
++.article-sections>section:target { border-top-color: var(--orange); }
++.section-number { font-size: .875rem; color: var(--muted); padding-top: .3rem; }
++.article-sections h2 { font-size: clamp(1.8rem,3vw,2.8rem); line-height: 1.15; letter-spacing: -.03em; font-weight: 400; }
++.article-sections p, .article-sections li { max-width: 68ch; font-size: 1.0625rem; line-height: 1.85; color: #365047; }
++.article-sections ul { padding-left: 1.2rem; }
++.article-sections li { padding-left: .4rem; margin-bottom: .7rem; }
++.article-sections li::marker { color: #6a853c; }
++.article-sections aside { background: #edf3e5; color: #365047; border: 0; border-left: 3px solid #789447; border-radius: 0 .75rem .75rem 0; font-size: .9375rem; line-height: 1.75; padding: 1.2rem 1.5rem; }
++.feature-figure { margin: 0 0 3rem; padding: 1rem; background: white; border: 1px solid var(--line); border-radius: 1rem; }
++.feature-figure img { width: 100%; height: auto; border: 0; border-radius: .5rem; }
++.feature-figure figcaption { font-size: .875rem; line-height: 1.65; color: var(--muted); padding: 1rem .5rem 0; }
++.review-banner { display: block; margin-top: 2rem; border: 1px solid var(--line); border-radius: .75rem; padding: 1.3rem 1.5rem; background: transparent; }
++.review-banner span { font-size: .8125rem; color: var(--ink); }
++.review-banner p { font-size: .875rem; color: var(--muted); margin: .5rem 0 0; line-height: 1.7; }
++.next-page { position: relative; display: block; margin-top: 3rem; padding: 2.2rem 5rem 2.2rem 2.2rem; background: var(--deep); color: #fff; border: 0; border-radius: 1rem; text-decoration: none; }
++.next-page>span { display: block; font-size: .75rem; color: var(--lime); letter-spacing: .13em; }
++.next-page strong { display: block; font: 400 clamp(1.75rem,3vw,2.7rem)/1.15 Georgia,serif; margin-top: .9rem; }
++.next-page b { position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); font-size: 2rem; color: var(--lime); }
++.next-page:hover { background: #164c3c; }
++.next-page:hover b { transform: translate(.2rem, -50%); }
++.map-page { padding-top: 5rem; }
++.map-heading { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,.7fr); align-items: end; gap: 3rem; margin-bottom: 4rem; }
++.map-heading em { color: #527242; font-weight: 400; }
++.map-intro { font-size: 1.125rem; line-height: 1.75; margin: 0; color: var(--muted); }
++.map-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1.25rem; background: transparent; border: 0; margin: 0; }
++.map-grid .map-group { --category: #a9d760; padding: 1.5rem; border: 1px solid var(--line); border-top: 4px solid var(--category); border-radius: .25rem .25rem 1rem 1rem; background: #fff; transition: transform .2s, box-shadow .2s; }
++.map-grid .map-group:hover { transform: translateY(-4px); box-shadow: 0 14px 30px #123c320a; }
++.map-grid .map-group--1 { --category: #6bc9dc; }
++.map-grid .map-group--2 { --category: #edac52; }
++.map-grid .map-group--3 { --category: #b49cd3; }
++.map-group>header { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: .75rem; letter-spacing: .08em; }
++.map-number { font: 400 2.25rem/1 Georgia,serif; color: var(--ink); }
++.map-group h2 { font: 400 1.85rem/1.2 Georgia,serif; letter-spacing: -.03em; margin: 2rem 0 .8rem; }
++.map-grid .map-description { min-height: 5rem; margin: 0 0 1.5rem; font-size: .9375rem; line-height: 1.7; color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
++.map-grid .map-links a { display: flex; justify-content: space-between; align-items: center; gap: .5rem; min-height: 56px; padding: .9rem 0; font: 500 .9375rem/1.4 system-ui,sans-serif; border-bottom: 1px solid var(--line); text-decoration: none; }
++.map-grid .map-links a:hover { color: #4e701c; }
++.map-links a b { font-size: 1.1rem; font-weight: 400; }
++.map-return { margin-top: 3rem; padding-block: 1.5rem; border-block: 1px solid var(--line); display: flex; justify-content: space-between; gap: 1rem; }
++.map-return>span { color: var(--muted); }
++.map-return a { text-decoration: none; }
++.site-footer { padding: 3.5rem clamp(1.5rem,5vw,5rem); display: flex; justify-content: space-between; gap: 3rem; background: var(--deep); color: white; border: 0; }
++.site-footer .footer-brand { font: 400 3rem/1 Georgia,serif; letter-spacing: -.055em; margin: 0 0 1rem; }
++.footer-brand span { color: var(--lime); }
++.site-footer p:not(.footer-brand) { max-width: 28rem; color: #c1d4c9; font-size: .9375rem; line-height: 1.7; }
++.site-footer small { font-size: .75rem; letter-spacing: .1em; color: #c1d4c9; }
++.footer-links { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem 2rem; align-content: center; }
++.footer-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: .875rem; text-underline-offset: .35rem; }
++/* Keep the existing world, make its editorial layer legible. */
++.duna-world .site-header { position: fixed; inset: 0 0 auto; }
++.duna-world .world-intro { background: linear-gradient(90deg,rgba(3,28,25,.83),rgba(3,28,25,.34) 44%,transparent 72%),linear-gradient(0deg,rgba(3,28,25,.5),transparent 35%); }
++.intro-coordinate { top: 7rem; font-size: .75rem; color: #d3e4d8; }
++.intro-lockup { top: clamp(10rem,23vh,15rem); width: min(36rem,48vw); }
++.world-intro .intro-lockup>p:first-child { font-size: .8125rem; line-height: 1.6; letter-spacing: .12em; }
++.world-intro .intro-lockup h1 { font-size: clamp(5rem,9vw,9rem); line-height: .94; letter-spacing: -.065em; }
++.world-intro .intro-lockup h1 i { margin-left: .35em; }
++.world-intro .intro-lockup h1+p { margin-top: 1.5rem; font-size: 1.125rem; line-height: 1.75; max-width: 27rem; color: #ebf1e7; }
++.intro-data { width: 15rem; top: 25vh; }
++.intro-data>div { grid-template-columns: 3.5rem 1fr; padding: 1rem 0; }
++.intro-data strong { font-size: 1.7rem; }
++.intro-data span { font-size: .8125rem; line-height: 1.5; letter-spacing: .08em; }
++.intro-start { bottom: 4rem; }
++.intro-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .8rem; }
++.duna-world .intro-actions button, .intro-actions a { display: inline-flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 52px; margin: 0; padding: .9rem 1.4rem; border-radius: 999px; font-size: .9375rem; font-weight: 650; letter-spacing: 0; text-transform: none; cursor: pointer; text-decoration: none; }
++.duna-world .intro-actions button { color: var(--ink); background: var(--lime); border: 1px solid var(--lime); }
++.intro-actions a { background: rgba(5,35,30,.8); color: white; border: 1px solid #a1b7a7; backdrop-filter: blur(8px); }
++.intro-actions button:hover { filter: brightness(1.08); }
++.intro-actions a:hover { background: #164c3c; }
++.intro-start>span { font-size: .75rem; color: #d3e4d8; letter-spacing: .1em; }
++.duna-opening-skip { min-height: 44px; font-size: .875rem; padding: .7rem 1.2rem; }
++.duna-opening-signature { font-size: .75rem; letter-spacing: .12em; }
++.duna-opening-word { line-height: 1.08; }
++.restart-drive { width: 44px; height: 44px; top: 6.7rem; right: 1rem; opacity: 1 !important; background: #082c26cf; }
++.duna-scroll-story { margin-top: -100svh; }
++.duna-scroll-chapter { padding-inline: clamp(1.5rem,5vw,5rem); }
++.duna-scroll-chapter>div { width: min(34rem,100%); padding: clamp(1.5rem,3vw,2.5rem); border-radius: 1rem; border: 1px solid #ffffff30; border-top: 3px solid var(--chapter-accent); background: rgba(5,30,26,.93); box-shadow: 0 20px 60px #031c2526; text-shadow: none; }
++.duna-scroll-chapter>div>p:first-child { flex-wrap: wrap; font-size: .75rem; letter-spacing: .1em; gap: .7rem; }
++.duna-scroll-chapter h2 { max-width: 14ch; font-size: clamp(2.35rem,4.7vw,4.5rem); line-height: 1.06; letter-spacing: -.045em; }
++.duna-scroll-chapter h2+p { margin-top: 1.2rem; font-size: 1rem; line-height: 1.8; color: #dfebe1; }
++.duna-scroll-chapter a { display: inline-flex; align-items: center; gap: 1rem; min-height: 44px; font-size: .875rem; letter-spacing: 0; text-transform: none; }
++.duna-world .wiki-terminal { width: min(1180px,calc(100vw - 3rem)); }
++.terminal-tabs { margin-left: 34%; }
++.terminal-tabs button { min-width: 8rem; height: 3.8rem; font-size: .875rem; line-height: 1.3; }
++.terminal-tabs button span { font-size: .75rem; }
++.terminal-tabs button:hover,.terminal-tabs button.is-active { height: 4.1rem; }
++.wiki-terminal>.terminal-shell { grid-template-columns: 34% 66%; }
++.terminal-preview h2 { font-size: clamp(2.5rem,4vw,4rem); line-height: 1.05; }
++.terminal-code { font-size: .75rem; }
++.terminal-preview>p:nth-of-type(1) { font-size: .75rem; }
++.terminal-preview>p:last-child { font-size: 1rem; line-height: 1.7; }
++.terminal-content>header p { font-size: .75rem; }
++.terminal-content>header h3 { font-size: clamp(2rem,3vw,3rem); line-height: 1.1; }
++.wiki-terminal .terminal-content>header>a { font-size: .875rem; min-height: 44px; }
++.wiki-terminal .terminal-links a { grid-template-columns: 1.5rem minmax(8rem,1fr) minmax(9rem,1.2fr) auto; gap: .8rem; }
++.terminal-links a>span { font-size: .75rem; }
++.terminal-links a>strong { font-size: 1.4rem; line-height: 1.2; }
++.wiki-terminal .terminal-links a>small { font-size: .875rem; line-height: 1.5; }
++.terminal-content>footer { font-size: .75rem; line-height: 1.4; letter-spacing: .04em; }
++.world-loading { position: relative; inset: auto; min-height: calc(100svh - 90px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem; background: var(--deep); color: white; font-size: 1rem; font-weight: 400; letter-spacing: 0; text-transform: none; }
++.world-loading .page-eyebrow { color: var(--lime); }
++.world-loading h1 { font: 400 clamp(3rem,10vw,7rem)/1 Georgia,serif; margin: 0; letter-spacing: -.06em; }
++.world-loading a { color: var(--lime); padding: .75rem; }
++@media (max-width: 1100px) {
++  .map-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
++  .map-grid .map-description { min-height: 3.2rem; }
++  .desktop-nav summary { padding-inline: .6rem; }
++  .site-header { padding-inline: 1.5rem; }
++  .article-hero { gap: 2.5rem; }
++}
++@media (max-width: 900px) {
++  .desktop-nav { display: none; }
++  .mobile-menu { display: block; position: static; }
++  .mobile-menu>summary { display: flex; align-items: center; gap: .8rem; list-style: none; cursor: pointer; min-height: 44px; border: 1px solid var(--line); border-radius: 999px; padding: .6rem 1rem; font-size: .875rem; }
++  .mobile-menu>summary::-webkit-details-marker { display: none; }
++  .mobile-menu>nav { position: absolute; top: calc(100% + .4rem); left: 1rem; right: 1rem; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1.25rem; max-height: calc(100dvh - 115px); overflow: auto; overscroll-behavior: contain; background: var(--cream); color: var(--ink); padding: 1.4rem; border: 1px solid var(--line); border-radius: 1rem; box-shadow: 0 20px 60px #082c2633; }
++  .mobile-nav-group>p { color: var(--muted); font-size: .75rem; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; margin: 0 0 .4rem; }
++  .mobile-nav-group a { display: block; min-height: 44px; padding: .65rem .2rem; font-size: .9375rem; text-decoration: none; line-height: 1.5; }
++  .mobile-nav-group a[aria-current="page"] { color: #41663a; text-decoration: underline; }
++  .mobile-map-link { grid-column: 1/-1; padding-top: 1rem; border-top: 1px solid var(--line); }
++  .article-layout { grid-template-columns: 1fr; gap: 2.5rem; }
++  .article-toc { position: static; padding: 1.25rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--salt); }
++  .article-toc nav a { border: 0; padding-block: .6rem; }
++  .toc-map { display: none; }
++  .map-heading { grid-template-columns: 1fr; gap: 1.75rem; }
++  .map-intro { max-width: 36rem; }
++}
++@media (max-width: 800px) {
++  .site-header { height: 78px; padding-inline: 1.1rem; }
++  .brand { font-size: 1.3rem; }
++  .brand small { font-size: .75rem; letter-spacing: .05em; }
++  .brand-mark { width: 2.4rem; height: 2.4rem; }
++  .article-page,.map-page { width: calc(100% - 2.5rem); padding-top: 2rem; }
++  .breadcrumbs { margin-bottom: 2rem; }
++  .article-hero { grid-template-columns: 1fr; gap: 1.75rem; padding-bottom: 2rem; }
++  .article-hero h1,.map-page h1 { font-size: clamp(2.75rem,9vw,4.75rem); }
++  .article-intro>p { font-size: 1rem; }
++  .article-sections>section { gap: .75rem; grid-template-columns: 1.75rem minmax(0,1fr); padding: 2rem 0; }
++  .article-sections p,.article-sections li { font-size: 1rem; }
++  .site-footer { flex-direction: column; }
++  .intro-coordinate { top: 6rem; }
++  .intro-lockup { top: auto; bottom: 12rem; left: 1.4rem; width: calc(100% - 2.8rem); }
++  .world-intro .intro-lockup h1 { font-size: clamp(4rem,16vw,6.5rem); line-height: .94; }
++  .world-intro .intro-lockup h1+p { font-size: 1rem; max-width: 27rem; margin-top: 1.1rem; line-height: 1.65; }
++  .intro-start { bottom: 3.5rem; left: 1.4rem; right: 1.4rem; }
++  .intro-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
++  .duna-world .intro-actions button,.intro-actions a { min-width: 0; width: 100%; gap: .6rem; padding: .8rem 1rem; font-size: .875rem; }
++  .restart-drive { top: 6rem; }
++  .duna-scroll-chapter,.duna-scroll-chapter.is-right { padding: 7rem 1.25rem 12svh; align-items: end; }
++  .duna-scroll-chapter>div { width: min(32rem,100%); }
++  .duna-scroll-chapter h2 { font-size: clamp(2.3rem,9vw,3.5rem); }
++  .duna-world .wiki-terminal,.duna-world.is-arriving .wiki-terminal { top: 56%; width: calc(100vw - 1.5rem); }
++  .terminal-tabs { margin-left: 0; }
++  .terminal-tabs button { flex: 0 0 auto; }
++  .wiki-terminal>.terminal-shell { grid-template-columns: 1fr; grid-template-rows: minmax(0,1fr); height: min(65svh,580px); }
++  .terminal-preview { display: none; }
++  .wiki-terminal .terminal-links a { grid-template-columns: 1.5rem minmax(0,1fr) auto; min-height: 64px; }
++  .terminal-content>header { gap: .5rem; padding: 1rem; }
++  .terminal-content>header h3 { font-size: 1.85rem; }
++  .terminal-content>header p { font-size: .75rem; letter-spacing: .03em; }
++  .terminal-content>footer { font-size: .75rem; }
++  .duna-opening-signature { max-width: calc(100% - 2rem); font-size: .75rem; }
++}
++@media (max-width: 520px) {
++  .map-grid { grid-template-columns: 1fr; }
++  .map-grid .map-description { min-height: 0; }
++  .map-group h2 { margin-top: 1.3rem; }
++  .map-return { flex-direction: column; gap: .5rem; }
++  .intro-coordinate { font-size: .75rem; letter-spacing: .06em; }
++  .world-intro .intro-lockup>p:first-child { font-size: .75rem; letter-spacing: .06em; }
++  .world-intro .intro-lockup>p:first-child span { display: none; }
++  .intro-actions { grid-template-columns: 1fr; gap: .5rem; }
++  .intro-actions a,.duna-world .intro-actions button { min-height: 44px; justify-content: center; padding: .6rem 1rem; }
++  .intro-lockup { bottom: 15rem; }
++  .intro-start { bottom: 3rem; }
++  .footer-links { grid-template-columns: 1fr; }
++  .next-page { padding: 1.5rem 3.5rem 1.5rem 1.5rem; }
++  .next-page b { right: 1.25rem; }
++}
++@media (max-height: 740px) and (max-width: 800px) {
++  .intro-coordinate { display: none; }
++  .intro-lockup { top: 7rem; bottom: auto; }
++  .world-intro .intro-lockup h1 { font-size: clamp(3rem,12vw,4.8rem); }
++  .world-intro .intro-lockup h1 span,.world-intro .intro-lockup h1 i { display: inline; margin: 0; }
++  .world-intro .intro-lockup h1+p { margin-top: .8rem; }
++}
++@media (max-height: 500px) {
++  .intro-data,.intro-coordinate { display: none; }
++  .intro-lockup { top: 6rem; bottom: auto; width: calc(100% - 3rem); }
++  .world-intro .intro-lockup h1 { font-size: 3.5rem; }
++  .world-intro .intro-lockup h1 span,.world-intro .intro-lockup h1 i { display: inline; margin: 0; }
++  .world-intro .intro-lockup h1+p { margin: .6rem 0 0; font-size: 1rem; max-width: 40rem; }
++  .world-intro .intro-lockup>p:first-child,.intro-start>span { display: none; }
++  .intro-actions { display: flex; }
++  .intro-actions a,.duna-world .intro-actions button { width: auto; min-width: 0; min-height: 44px; }
++  .intro-start { bottom: 2rem; }
++  .duna-world .wiki-terminal,.duna-world.is-arriving .wiki-terminal { top: 62%; }
++  .wiki-terminal>.terminal-shell { height: 48svh; }
++}
++@media (prefers-reduced-motion: reduce) {
++  html { scroll-behavior: auto; }
++  *,*::before,*::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
++  .map-grid .map-group:hover { transform: none; }
++}
