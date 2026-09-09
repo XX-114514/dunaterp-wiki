@@ -8,7 +8,9 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PixelEngine, type Mode } from "./pixel/engine";
-import { STATION_COPY } from "./pixel/station-copy";
+import { ARCHIVE_COPY, STATION_COPY } from "./pixel/station-copy";
+import { ExpeditionJournal, type ExpeditionJournalRequest } from "./ExpeditionJournal";
+import type { Npc } from "./pixel/npc-data";
 import { navigation } from "./site-data";
 
 type HeaderProps = { light?: boolean };
@@ -47,8 +49,11 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
   const engineRef = useRef<PixelEngine | null>(null);
   const scrollLock = useRef(0);
 
+  const [npcPrompt, setNpcPrompt] = useState<Npc | null>(null);
+  const [journalRequest, setJournalRequest] = useState<ExpeditionJournalRequest | null>(null);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [mode, setMode] = useState<Mode>("guided");
   const [chapter, setChapter] = useState(-1);
   const [promptKey, setPromptKey] = useState<string | null>(null);
@@ -56,7 +61,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
   const [started, setStarted] = useState(false);
 
   const promptStation = useMemo(
-    () => STATION_COPY.find((item) => item.key === promptKey) ?? null,
+    () => [...STATION_COPY, ARCHIVE_COPY].find((item) => item.key === promptKey) ?? null,
     [promptKey],
   );
 
@@ -74,13 +79,19 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         onChapter: setChapter,
         onPrompt: (station) => setPromptKey(station ? station.key : null),
         onEnter: (station) => navigate(station.route),
+        onNpcPrompt: setNpcPrompt,
+        onNpcInteract: (npc) => setJournalRequest((current) => ({ npcId: npc.id, serial: (current?.serial ?? 0) + 1 })),
       });
     } catch (error) {
       console.error("DunaTerp world failed to start", error);
+      requestAnimationFrame(() => setFailed(true));
       return;
     }
     engineRef.current = engine;
-    void engine.start();
+    void engine.start().catch((error: unknown) => {
+      console.error("DunaTerp world failed to prepare", error);
+      if (engineRef.current === engine) { engine?.dispose(); setFailed(true); }
+    });
 
     return () => {
       engine?.dispose();
@@ -149,10 +160,10 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
 
   const toggleMode = useCallback(() => {
     const engine = engineRef.current;
-    if (!engine) return;
+    if (!engine || !ready || failed) return;
     if (engine.mode === "free") engine.exitFree();
-    else engine.enterFree();
-  }, []);
+    else { engine.enterFree(); canvas.current?.focus({ preventScroll: true }); }
+  }, [ready, failed]);
 
   const beginJourney = useCallback(() => {
     const node = root.current;
@@ -187,7 +198,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
       id="main-content"
       tabIndex={-1}
       ref={root}
-      className={`px-world${ready ? " is-ready" : ""}${started ? " is-started" : ""}${mode === "free" ? " is-free" : ""}${atArchive ? " is-archive" : ""}`}
+      className={`px-world${ready ? " is-ready" : ""}${started ? " is-started" : ""}${mode === "free" ? " is-free" : ""}${atArchive ? " is-archive" : ""}${failed ? " has-failed" : ""}`}
     >
       <Header light />
 
@@ -197,16 +208,17 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           className="px-stage"
           aria-label="A pixel-art salt lake you can walk through"
         >
-          <canvas ref={canvas} className="px-canvas" />
+          <canvas ref={canvas} className="px-canvas" tabIndex={0} aria-label="Salt lake exploration. Use WASD or arrow keys to move; E to interact; Escape to return to guided mode." />
         </div>
 
-        {!ready && <LoadingScreen ratio={progress} />}
+        {!ready && !failed && <LoadingScreen ratio={progress} />}
+        {failed && <div className="px-loading" role="alert"><p>The salt lake could not load.</p><Link className="px-button" to="/wiki-map">Read all project chapters</Link><button className="px-button" type="button" onClick={() => window.location.reload()}>Try again</button></div>}
 
         <section className="px-intro" inert={!ready || started || mode === "free"}>
           <p className="px-coord"><span /> SCU–CHINA · CHENGDU · iGEM 2026</p>
           <h1>Duna<i>Terp</i></h1>
           <p className="px-intro-line">
-            One salt-adapted cell. One shared β-carotene hub. Four routes into colour.
+            One salt-adapted cell. A shared β-carotene hub. Explore the science behind colour and aroma.
           </p>
           <div className="px-intro-actions">
             <button type="button" className="px-button px-button--primary" onClick={beginJourney}>
@@ -224,7 +236,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           </p>
         </section>
 
-        {activeChapter && (
+        {activeChapter && mode !== "free" && !promptStation && !atArchive && (
           <aside className="px-hud" style={{ "--px-accent": activeChapter.color } as React.CSSProperties}>
             <span className="px-hud-index">{activeChapter.index}</span>
             <div>
@@ -235,6 +247,17 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
             </div>
           </aside>
         )}
+
+        {mode === "free" && <ExpeditionJournal
+          currentStationKey={npcPrompt?.stationKey ?? promptKey}
+          openRequest={journalRequest}
+          onOpenChange={(open) => { engineRef.current?.setPaused(open); if (!open) { setJournalRequest(null); requestAnimationFrame(() => requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true }))); } }}
+          onTravel={(key) => { engineRef.current?.travelToStation(key); canvas.current?.focus({ preventScroll: true }); }}
+        />}
+        {npcPrompt && mode === "free" && <div className="px-prompt" style={{ "--px-accent": npcPrompt.accent } as React.CSSProperties}>
+          <span className="px-prompt-key">E</span>
+          <div><p>{npcPrompt.role} · FIELD GUIDE</p><button type="button" onClick={() => engineRef.current?.talkToNpc()}>Talk to {npcPrompt.name} ↗</button></div>
+        </div>}
 
         {promptStation && (
           <div
@@ -251,15 +274,30 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           </div>
         )}
 
+        {mode === "free" && <div className="px-dpad" role="group" aria-label="Movement controls">
+          {([['w', '↑', 'Move up'], ['a', '←', 'Move left'], ['s', '↓', 'Move down'], ['d', '→', 'Move right']] as const).map(([key, symbol, label]) => (
+            <button key={key} type="button" aria-label={label}
+              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); engineRef.current?.setMoveKey(key, true); }}
+              onPointerUp={() => engineRef.current?.setMoveKey(key, false)}
+              onPointerCancel={() => engineRef.current?.setMoveKey(key, false)}
+              onLostPointerCapture={() => engineRef.current?.setMoveKey(key, false)}
+              onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); engineRef.current?.setMoveKey(key, true); } }}
+              onKeyUp={() => engineRef.current?.setMoveKey(key, false)}
+              onBlur={() => engineRef.current?.setMoveKey(key, false)}>{symbol}</button>
+          ))}
+        </div>}
+
         <div className="px-controls">
           <button
             type="button"
             className={`px-mode${mode === "free" ? " is-on" : ""}`}
             onClick={toggleMode}
             aria-pressed={mode === "free"}
+            disabled={!ready || failed}
           >
             {mode === "free" ? "Back to the route" : "Free roam"}
           </button>
+          {mode === "free" && <p className="px-touch-help">Hold arrows or drag the lake to move. Use the Talk button near a guide.</p>}
           {mode === "free" && (
             <p className="px-mode-help">
               <kbd>WASD</kbd> move · <kbd>Shift</kbd> run · <kbd>E</kbd> enter · <kbd>Esc</kbd> return
@@ -281,7 +319,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           ))}
         </div>
 
-        <section className="px-archive" inert={!atArchive} aria-label="DunaTerp wiki index">
+        <section className="px-archive" inert={!atArchive || mode === "free"} aria-label="DunaTerp wiki index">
           <header>
             <p>ARCHIVE · EVERY STANDARD ROUTE</p>
             <h2>You reached the end of the lake.</h2>
@@ -307,7 +345,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         </section>
       </div>
 
-      <div className="px-scroll-story">
+      <div className="px-scroll-story" inert={ready}>
         <div className="px-scroll-lead" aria-hidden="true" />
         {STATION_COPY.map((station, index) => (
           <section

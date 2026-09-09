@@ -7,6 +7,7 @@
 
 import { PixelRenderer, type Camera, type Drawable } from "./renderer";
 import type { Facing } from "./sprites";
+import { createNpcs, type Npc } from "./npc-data";
 import { TILE, drag } from "./tiles";
 import {
   buildWorld,
@@ -27,6 +28,9 @@ export type EngineEvents = {
   onPrompt: (station: Station | null) => void;
   /** Fired when the visitor confirms an interaction. */
   onEnter: (station: Station) => void;
+  /** Optional free-roam NPC prompt and journal interaction hooks. */
+  onNpcPrompt?: (npc: Npc | null) => void;
+  onNpcInteract?: (npc: Npc) => void;
 };
 
 const WALK_SPEED = 62;
@@ -46,9 +50,14 @@ const BODY_HALF_H = 3;
 
 export class PixelEngine {
   readonly world: World;
+  /** Positioned journal cast, exposed for DOM overlays and tests. */
+  readonly npcs: Npc[];
   private readonly renderer: PixelRenderer;
   private readonly host: HTMLElement;
   private readonly events: EngineEvents;
+  private readonly reducedMotion = typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   private raf = 0;
   private disposed = false;
@@ -68,8 +77,16 @@ export class PixelEngine {
 
   private camera: Camera = { x: 0, y: 0 };
   private keys = new Set<string>();
-  private stick: { active: boolean; x: number; y: number; originX: number; originY: number } = {
+  private stick: {
+    active: boolean;
+    pointerId: number | null;
+    x: number;
+    y: number;
+    originX: number;
+    originY: number;
+  } = {
     active: false,
+    pointerId: null,
     x: 0,
     y: 0,
     originX: 0,
@@ -77,11 +94,17 @@ export class PixelEngine {
   };
 
   private activeStation: Station | null = null;
+  private activeNpc: Npc | null = null;
+  private paused = false;
   private chapter = -1;
   private resizeObserver: ResizeObserver | null = null;
+  /** Stable scene entries; only the hero's position/frame changes per tick. */
+  private readonly drawables: Drawable[] = [];
+  private readonly heroDrawable: Extract<Drawable, { kind: "hero" }>;
 
   constructor(canvas: HTMLCanvasElement, host: HTMLElement, events: EngineEvents) {
     this.world = buildWorld();
+    this.npcs = createNpcs(this.world);
     this.renderer = new PixelRenderer(canvas);
     this.host = host;
     this.events = events;
@@ -91,6 +114,21 @@ export class PixelEngine {
     this.hero.y = start.y;
     this.camera.x = start.x;
     this.camera.y = start.y;
+
+    for (const prop of this.world.props) this.drawables.push({ kind: "prop", prop });
+    for (const station of this.world.stations) this.drawables.push({ kind: "station", station });
+    this.drawables.push({ kind: "station", station: this.world.archive });
+    for (const npc of this.npcs) {
+      this.drawables.push({ kind: "npc", npc, x: npc.x, y: npc.y, facing: "down", frame: 0 });
+    }
+    this.heroDrawable = {
+      kind: "hero",
+      x: this.hero.x,
+      y: this.hero.y,
+      facing: this.facing,
+      frame: 0,
+    };
+    this.drawables.push(this.heroDrawable);
   }
 
   async start() {
@@ -166,14 +204,68 @@ export class PixelEngine {
     this.mode = "returning";
     this.events.onMode(this.mode);
     this.keys.clear();
-    this.stick.active = false;
+    this.releaseStick();
   }
 
-  /** Confirm the current interaction prompt. Returns the route, if any. */
+  /** Pause simulation/input while a DOM modal or menu owns the interaction. */
+  setPaused(paused: boolean) {
+    this.paused = paused;
+    if (paused) {
+      this.keys.clear();
+      this.hero.vx = 0;
+      this.hero.vy = 0;
+      this.releaseStick();
+    }
+  }
+
+  get isPaused() {
+    return this.paused;
+  }
+
+  /** Confirm the closest prompt. NPCs win only when they are the closest. */
   interact(): Station | null {
+    if (this.paused || this.hasOpenModal()) return null;
+    if (this.activeNpc) {
+      this.talkToNpc();
+      return null;
+    }
     if (!this.activeStation) return null;
     this.events.onEnter(this.activeStation);
     return this.activeStation;
+  }
+
+  /** Public NPC interaction entry point for a DOM prompt or journal button. */
+  talkToNpc(): Npc | null {
+    if (!this.activeNpc || this.paused || this.hasOpenModal()) return null;
+    this.events.onNpcInteract?.(this.activeNpc);
+    return this.activeNpc;
+  }
+
+  /** Move the guided target to a station/archive by its stable key. */
+  travelToStation(key: string): boolean {
+    const station = [...this.world.stations, this.world.archive].find((item) => item.key === key);
+    if (!station) return false;
+    this.keys.clear();
+    this.releaseStick();
+    this.targetU = Math.max(0.001, Math.min(0.999, station.u));
+    this.uVelocity = 0;
+    if (this.mode === "free") {
+      const sample = this.world.path.sample(this.targetU);
+      this.hero.x = sample.x;
+      this.hero.y = sample.y;
+      this.hero.vx = 0;
+      this.hero.vy = 0;
+      this.u = this.targetU;
+      this.updateFacing(sample.dx, sample.dy);
+    } else if (this.mode === "returning") {
+      // Returning is a short hand-back animation; retarget it from the new
+      // location so a menu jump never leaves the hero interpolating to stale
+      // coordinates.
+      this.returnFrom = { x: this.hero.x, y: this.hero.y };
+      this.returnTime = 0;
+    }
+    this.updateProximity();
+    return true;
   }
 
   get journey() {
@@ -186,9 +278,54 @@ export class PixelEngine {
     "arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d",
   ]);
 
+  private static readonly MOVE_ALIASES: Record<string, string> = {
+    up: "arrowup",
+    down: "arrowdown",
+    left: "arrowleft",
+    right: "arrowright",
+    arrowup: "arrowup",
+    arrowdown: "arrowdown",
+    arrowleft: "arrowleft",
+    arrowright: "arrowright",
+    w: "w",
+    a: "a",
+    s: "s",
+    d: "d",
+    shift: "shift",
+  };
+
+  private normaliseMoveKey(key: string): string | null {
+    return PixelEngine.MOVE_ALIASES[key.trim().toLowerCase()] ?? null;
+  }
+
+  /** Drive movement from an on-screen D-pad without synthesising key events. */
+  setMoveKey(key: string, pressed: boolean) {
+    const normalised = this.normaliseMoveKey(key);
+    if (!normalised) return;
+    if (!pressed) {
+      this.keys.delete(normalised);
+      return;
+    }
+    if (this.paused || this.hasOpenModal()) return;
+    if (PixelEngine.MOVE_KEYS.has(normalised) && this.mode !== "free") this.enterFree();
+    this.keys.add(normalised);
+  }
+
+  private isInteractiveTarget(target: EventTarget | null): boolean {
+    const element = typeof Element !== "undefined" && target instanceof Element ? target : null;
+    if (!element) return false;
+    return Boolean(element.closest(
+      "button,a,input,textarea,select,option,dialog,nav,[contenteditable],[role='button'],[role='link'],[role='dialog']",
+    ));
+  }
+
+  private hasOpenModal(): boolean {
+    if (typeof document === "undefined") return false;
+    return Boolean(document.querySelector("dialog[open],[role='dialog'][aria-modal='true']"));
+  }
+
   private onKeyDown = (event: KeyboardEvent) => {
-    const target = event.target as HTMLElement | null;
-    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+    if (this.paused || this.hasOpenModal() || this.isInteractiveTarget(event.target)) return;
     const key = event.key.toLowerCase();
 
     if (key === "escape" && this.mode === "free") {
@@ -196,7 +333,8 @@ export class PixelEngine {
       this.exitFree();
       return;
     }
-    if ((key === "e" || key === "enter") && this.activeStation) {
+    if (event.repeat && (key === "e" || key === "enter")) return;
+    if ((key === "e" || key === "enter") && (this.activeNpc || this.activeStation)) {
       event.preventDefault();
       this.interact();
       return;
@@ -215,20 +353,29 @@ export class PixelEngine {
 
   private onBlur = () => {
     this.keys.clear();
-    this.stick.active = false;
+    this.releaseStick();
   };
 
   private onPointerDown = (event: PointerEvent) => {
-    if (this.mode !== "free") return;
+    if (this.mode !== "free" || this.paused) return;
+    // One active pointer owns the stick. Secondary touches must not reset the
+    // origin and cause a jump when a second finger lands on the canvas.
+    if (this.stick.pointerId !== null || event.isPrimary === false) return;
     this.stick.active = true;
+    this.stick.pointerId = event.pointerId;
     this.stick.originX = event.clientX;
     this.stick.originY = event.clientY;
     this.stick.x = 0;
     this.stick.y = 0;
+    try {
+      this.renderer.display.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is unavailable in a few embedded canvas shims.
+    }
   };
 
   private onPointerMove = (event: PointerEvent) => {
-    if (!this.stick.active) return;
+    if (!this.stick.active || this.stick.pointerId !== event.pointerId) return;
     const dx = event.clientX - this.stick.originX;
     const dy = event.clientY - this.stick.originY;
     const length = Math.hypot(dx, dy);
@@ -243,8 +390,24 @@ export class PixelEngine {
     this.stick.y = (dy / length) * clamped;
   };
 
-  private onPointerUp = () => {
+  private onPointerUp = (event: PointerEvent) => {
+    if (this.stick.pointerId !== null && event.pointerId !== this.stick.pointerId) return;
+    this.releaseStick();
+  };
+
+  private releaseStick() {
+    const pointerId = this.stick.pointerId;
+    if (pointerId !== null) {
+      try {
+        if (this.renderer.display.hasPointerCapture(pointerId)) {
+          this.renderer.display.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // Ignore stale capture IDs during blur/dispose.
+      }
+    }
     this.stick.active = false;
+    this.stick.pointerId = null;
     this.stick.x = 0;
     this.stick.y = 0;
   };
@@ -322,6 +485,15 @@ export class PixelEngine {
   }
 
   private stepGuided(delta: number) {
+    if (this.reducedMotion) {
+      this.u = this.targetU;
+      this.uVelocity = 0;
+      const sample = this.world.path.sample(this.u);
+      this.hero.x = sample.x;
+      this.hero.y = sample.y;
+      this.updateFacing(sample.dx, sample.dy);
+      return;
+    }
     const remaining = this.targetU - this.u;
     this.uVelocity += (remaining * FOLLOW_STIFFNESS - this.uVelocity * FOLLOW_DAMPING) * delta;
     this.uVelocity = Math.max(-MAX_FOLLOW_SPEED, Math.min(MAX_FOLLOW_SPEED, this.uVelocity));
@@ -350,6 +522,15 @@ export class PixelEngine {
   }
 
   private stepReturning(delta: number) {
+    if (this.reducedMotion) {
+      const sample = this.world.path.sample(this.u);
+      this.hero.x = sample.x;
+      this.hero.y = sample.y;
+      this.returnTime = 1;
+      this.mode = "guided";
+      this.events.onMode(this.mode);
+      return;
+    }
     this.returnTime += delta;
     const t = Math.min(1, this.returnTime / 0.7);
     const eased = t * t * (3 - 2 * t);
@@ -371,18 +552,39 @@ export class PixelEngine {
   }
 
   private updateProximity() {
-    let nearest: Station | null = null;
-    let nearestDistance = INTERACT_RADIUS;
+    let nearestStation: Station | null = null;
+    let nearestNpc: Npc | null = null;
+    let nearestStationDistance = INTERACT_RADIUS;
+    let nearestNpcDistance = INTERACT_RADIUS;
     for (const station of [...this.world.stations, this.world.archive]) {
       const distance = Math.hypot(station.x - this.hero.x, station.y + 6 - this.hero.y);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = station;
+      if (distance < nearestStationDistance) {
+        nearestStationDistance = distance;
+        nearestStation = station;
       }
     }
-    if (nearest !== this.activeStation) {
-      this.activeStation = nearest;
-      this.events.onPrompt(nearest);
+    if (this.mode === "free") {
+      for (const npc of this.npcs) {
+        const distance = Math.hypot(npc.x - this.hero.x, npc.y - this.hero.y);
+        if (distance < nearestNpcDistance) {
+          nearestNpcDistance = distance;
+          nearestNpc = npc;
+        }
+      }
+    }
+
+    // A person takes the prompt only when actually closer than the station;
+    // otherwise existing station navigation remains exactly as before.
+    const npcWins = nearestNpc !== null && nearestNpcDistance < nearestStationDistance;
+    const nextNpc = npcWins ? nearestNpc : null;
+    const nextStation = npcWins ? null : nearestStation;
+    if (nextNpc !== this.activeNpc) {
+      this.activeNpc = nextNpc;
+      this.events.onNpcPrompt?.(nextNpc);
+    }
+    if (nextStation !== this.activeStation) {
+      this.activeStation = nextStation;
+      this.events.onPrompt(nextStation);
     }
 
     // Chapter HUD follows route position, not proximity, so it stays stable
@@ -407,9 +609,19 @@ export class PixelEngine {
     const delta = Math.min(0.04, Math.max(0, (now - this.lastTime) / 1000));
     this.lastTime = now;
 
-    if (this.mode === "free") this.stepFree(delta);
-    else if (this.mode === "returning") this.stepReturning(delta);
-    else this.stepGuided(delta);
+    const modalOpen = this.hasOpenModal();
+    if (this.paused || modalOpen) {
+      if (modalOpen && !this.paused) {
+        this.keys.clear();
+        this.hero.vx = 0;
+        this.hero.vy = 0;
+        this.releaseStick();
+      }
+    } else {
+      if (this.mode === "free") this.stepFree(delta);
+      else if (this.mode === "returning") this.stepReturning(delta);
+      else this.stepGuided(delta);
+    }
 
     this.updateProximity();
 
@@ -435,25 +647,25 @@ export class PixelEngine {
     this.camera.y += (this.hero.y + leadY - this.camera.y) * ease;
     this.renderer.clampCamera(this.camera);
 
-    const drawables: Drawable[] = [];
-    for (const prop of this.world.props) drawables.push({ kind: "prop", prop });
-    for (const station of this.world.stations) drawables.push({ kind: "station", station });
-    drawables.push({ kind: "station", station: this.world.archive });
-    drawables.push({
-      kind: "hero",
-      x: this.hero.x,
-      y: this.hero.y,
-      facing: this.facing,
-      frame: Math.floor(this.walkDistance / 7) % 4,
-    });
+    this.heroDrawable.x = this.hero.x;
+    this.heroDrawable.y = this.hero.y;
+    this.heroDrawable.facing = this.facing;
+    this.heroDrawable.frame = this.reducedMotion ? 0 : Math.floor(this.walkDistance / 7) % 4;
 
     this.renderer.render({
       world: this.world,
       camera: this.camera,
-      drawables,
-      time: now / 1000,
+      drawables: this.drawables,
+      time: this.reducedMotion ? 0 : now / 1000,
       daylight: this.u,
-      prompt: this.activeStation
+      prompt: this.activeNpc
+        ? {
+          x: this.activeNpc.x,
+          y: this.activeNpc.y - 26,
+          text: "E  TALK",
+          accent: this.activeNpc.paletteKey,
+        }
+        : this.activeStation
         ? {
           x: this.hero.x,
           y: this.hero.y - 26,
@@ -461,6 +673,7 @@ export class PixelEngine {
           accent: this.activeStation.accent,
         }
         : null,
+      showNpcLabels: this.mode === "free",
     });
   };
 }

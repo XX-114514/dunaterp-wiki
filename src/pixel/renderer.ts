@@ -8,6 +8,7 @@
 import { drawText, textWidth } from "./font";
 import { rect, surface, type Painter } from "./paint";
 import { deckSegment, getAtlas, stationPlate, type Facing } from "./sprites";
+import type { Npc } from "./npc-data";
 import { TILE, Tile, paintTile } from "./tiles";
 import {
   MAP_H,
@@ -29,6 +30,7 @@ export type Camera = { x: number; y: number };
 export type Drawable =
   | { kind: "prop"; prop: Prop }
   | { kind: "station"; station: Station }
+  | { kind: "npc"; npc: Npc; x: number; y: number; facing: Facing; frame: number }
   | { kind: "hero"; x: number; y: number; facing: Facing; frame: number };
 
 export class PixelRenderer {
@@ -37,6 +39,8 @@ export class PixelRenderer {
   private buffer: Painter;
   private ground: HTMLCanvasElement | null = null;
   private plates = new Map<string, Painter>();
+  /** Tinted/accessoried hero frames, cached so render never allocates canvases. */
+  private npcSprites = new Map<string, Painter>();
   scale = 3;
 
   constructor(display: HTMLCanvasElement) {
@@ -145,6 +149,52 @@ export class PixelRenderer {
     return plate;
   }
 
+  private npcSprite(npc: Npc, facing: Facing, frame: number): Painter {
+    const key = `${npc.id}:${facing}:${frame % 4}`;
+    const cached = this.npcSprites.get(key);
+    if (cached) return cached;
+
+    const base = getAtlas().hero[facing][frame % 4];
+    const sprite = surface(base.w, base.h);
+    const ctx = sprite.ctx;
+    ctx.drawImage(base.canvas, 0, 0);
+
+    // Keep the original hero's palette and linework, then add a restrained
+    // source-atop tint so each NPC is readable at a glance without introducing
+    // a second art style.
+    ctx.save();
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = npc.tint;
+    ctx.fillRect(0, 0, sprite.w, sprite.h);
+    ctx.restore();
+
+    ctx.fillStyle = npc.accent;
+    ctx.strokeStyle = "#06221f";
+    ctx.lineWidth = 1;
+    if (npc.accessory === "helmet") {
+      // Hard, one-pixel helmet brim and crown.
+      ctx.fillRect(2, 1, 10, 2);
+      ctx.fillRect(4, 0, 6, 1);
+      ctx.fillStyle = "#06221f";
+      ctx.fillRect(2, 3, 10, 1);
+    } else if (npc.accessory === "satchel") {
+      // Satchel over one shoulder, plus a bright sample vial in hand.
+      ctx.fillRect(1, 10, 3, 6);
+      ctx.fillStyle = "#06221f";
+      ctx.fillRect(1, 10, 3, 1);
+      ctx.fillStyle = npc.accent;
+      ctx.fillRect(facing === "left" ? 10 : 1, 13, 2, 3);
+    } else {
+      // Research notebook held low; the pale edge survives the tint wash.
+      ctx.fillRect(facing === "left" ? 2 : 10, 12, 3, 4);
+      ctx.fillStyle = "#06221f";
+      ctx.fillRect(facing === "left" ? 2 : 10, 12, 3, 1);
+    }
+    this.npcSprites.set(key, sprite);
+    return sprite;
+  }
+
   render(options: {
     world: World;
     camera: Camera;
@@ -153,8 +203,10 @@ export class PixelRenderer {
     /** 0 at the trailhead, 1 at the archive — drives the light. */
     daylight: number;
     prompt: { x: number; y: number; text: string; accent: string } | null;
+    /** NPC names and overhead markers are intentionally shown in free mode. */
+    showNpcLabels?: boolean;
   }) {
-    const { world, camera, drawables, time, daylight, prompt } = options;
+    const { world, camera, drawables, time, daylight, prompt, showNpcLabels = false } = options;
     const p = this.buffer;
     const ctx = p.ctx;
     const ox = Math.round(camera.x - p.w / 2);
@@ -236,6 +288,19 @@ export class PixelRenderer {
           Math.round(item.station.x - plate.w / 2) - ox,
           y - plate.h - 4,
         );
+      } else if (item.kind === "npc") {
+        const sprite = this.npcSprite(item.npc, item.facing, item.frame);
+        const shadow = atlas.shadowSmall;
+        ctx.drawImage(
+          shadow.canvas,
+          Math.round(item.x - shadow.w / 2) - ox,
+          Math.round(item.y - shadow.h / 2) - oy,
+        );
+        ctx.drawImage(
+          sprite.canvas,
+          Math.round(item.x - sprite.w / 2) - ox,
+          Math.round(item.y - sprite.h) - oy,
+        );
       } else {
         const sprite = atlas.hero[item.facing][item.frame % 4];
         const shadow = atlas.shadowSmall;
@@ -252,6 +317,11 @@ export class PixelRenderer {
       }
     }
 
+    if (showNpcLabels) {
+      for (const item of visible) {
+        if (item.kind === "npc") this.drawNpcLabel(item.npc, item.x - ox, item.y - oy - 24);
+      }
+    }
     if (prompt) this.drawPrompt(prompt.text, prompt.x - ox, prompt.y - oy, prompt.accent);
 
     this.applyLight(daylight);
@@ -275,6 +345,26 @@ export class PixelRenderer {
     rect(p, left + Math.floor(w / 2) - 1, top + h + 1, 3, 1, "2");
     rect(p, left + Math.floor(w / 2), top + h + 2, 1, 1, "2");
     drawText(p, text, left + 5, top + 4, "F", { shadow: "1" });
+  }
+
+  private drawNpcLabel(npc: Npc, x: number, y: number) {
+    const label = npc.label;
+    const w = textWidth(label) + 8;
+    const left = Math.round(x - w / 2);
+    const top = Math.round(y - 10);
+    const p = this.buffer;
+    rect(p, left, top, w, 10, "2");
+    rect(p, left, top, w, 1, npc.paletteKey);
+    drawText(p, label, left + 4, top + 2, "F", { shadow: "1" });
+
+    // The exclamation mark is a tiny speech-sign marker, kept in the same
+    // bitmap font and accent as the NPC rather than browser text.
+    const bangW = textWidth("!") + 4;
+    const bangLeft = Math.round(x - bangW / 2);
+    const bangTop = top - 11;
+    rect(p, bangLeft, bangTop, bangW, 9, "2");
+    rect(p, bangLeft, bangTop, bangW, 1, npc.paletteKey);
+    drawText(p, "!", bangLeft + 2, bangTop + 1, "8", { shadow: "1" });
   }
 
   /**
@@ -328,6 +418,7 @@ export class PixelRenderer {
   dispose() {
     this.ground = null;
     this.plates.clear();
+    this.npcSprites.clear();
     this.buffer = surface(1, 1);
     this.display.width = 1;
     this.display.height = 1;

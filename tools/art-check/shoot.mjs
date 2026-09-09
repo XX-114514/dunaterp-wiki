@@ -12,7 +12,7 @@ import { installShim, writePng } from "./canvas2d.mjs";
 
 installShim();
 const here = path.dirname(fileURLToPath(import.meta.url));
-const { buildWorld, PixelRenderer } = await import("./.out/entry.js");
+const { buildWorld, PixelRenderer, createNpcs } = await import("./.out/entry.js");
 
 const world = buildWorld();
 const renderer = new PixelRenderer(document.createElement("canvas"));
@@ -47,6 +47,7 @@ function shot(name, u, options = {}) {
   for (const prop of world.props) drawables.push({ kind: "prop", prop });
   for (const station of world.stations) drawables.push({ kind: "station", station });
   drawables.push({ kind: "station", station: world.archive });
+  for (const npc of createNpcs(world)) drawables.push({ kind: "npc", npc, x: npc.x, y: npc.y, facing: "down", frame: 0 });
   drawables.push({
     kind: "hero",
     x: hero.x,
@@ -60,6 +61,7 @@ function shot(name, u, options = {}) {
     drawables,
     time: 1.2,
     daylight: u,
+    showNpcLabels: true,
     prompt: options.prompt
       ? { x: hero.x, y: hero.y - 26, text: options.prompt, accent: "8" }
       : null,

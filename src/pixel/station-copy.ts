@@ -2,7 +2,7 @@
 //
 // Both the canvas world and the DOM overlay read from here, so a station's
 // number, colour and copy can never drift between the two layers. The science
-// copy is the team's existing chapter text, unchanged.
+// copy follows the project draft and keeps design intent distinct from results.
 
 export type StationCopy = {
   key: string;
@@ -59,7 +59,7 @@ export const STATION_COPY: StationCopy[] = [
     index: "03",
     kicker: "TRANSCRIPTOMICS",
     title: "Read the light response",
-    body: "Light intensity and quality become two analysis axes for finding testable regulators around the LCYB control point.",
+    body: "Light intensity and quality guide the search for candidate transcription factors around LCYB. Expression associations are starting points for testing, not proof of regulation.",
     route: "/results",
     color: "#7de2ff",
     accent: "x",
@@ -73,7 +73,7 @@ export const STATION_COPY: StationCopy[] = [
     index: "04",
     kicker: "MATHEMATICAL MODEL",
     title: "Find where control moves",
-    body: "Expression, branch kinetics and network capacity ask when more LCYB stops producing a useful gain.",
+    body: "Models of expression, branch kinetics and network capacity explore when more LCYB may stop producing a useful gain. Their outputs are predictions to test.",
     route: "/model",
     color: "#e9c43a",
     accent: "u",
@@ -86,8 +86,8 @@ export const STATION_COPY: StationCopy[] = [
     short: "PRODUCTS",
     index: "05",
     kicker: "FOUR PRODUCT ROUTES",
-    title: "One hub, four strains",
-    body: "β-ionone, astaxanthin, crocetin and β-citraurin are designed as separate product strains sharing a β-carotene hub.",
+    title: "One hub, four designs",
+    body: "β-ionone, astaxanthin, crocetin and β-citraurin are candidate routes around a shared β-carotene hub, intended for separate strains.",
     route: "/engineering",
     color: "#e65c42",
     accent: "t",

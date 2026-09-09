@@ -23,3 +23,14 @@ No external fonts, analytics, iframes, runtime APIs or CDN-hosted assets are use
 - **Offline art check** (`tools/art-check/`): an original minimal Canvas2D rasteriser and PNG encoder written for this project so the art can be reviewed as images without a browser. It is a development tool and ships nothing to the site.
 - No scientific page content, figure, dataset or claim was changed in this work. Human review is pending; no scientific review and no browser or device verification is claimed. The `/responsible-ai` page must be updated by the team to list this model and use.
 
+
+
+## 9 September 2026 — pixel expedition revision
+
+OpenAI Codex coordinated GPT-5.6 Luna subtasks for NPC and learning-game code,
+engine input review, and navigation review. The active Canvas artwork extends
+the original repository sprite atlas; NPCs are fictional teaching guides.
+Stardew Valley is a style reference only: no third-party game sprites, portraits,
+music or dialogue were imported. Learning feedback and completion stamps are
+not scientific measurements. Project text remains a team-review draft.
+Named human reviewer: pending.

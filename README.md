@@ -52,4 +52,22 @@ The GitHub workflow supplies its own base path and creates an SPA fallback for d
 
 See `PIXEL-WORLD.md` for the homepage design, the rules the pixel art depends on, and what still needs browser acceptance.
 
-The immersive homepage is optional navigation. All judging-relevant pages remain directly reachable at predictable routes such as `/contribution`, `/engineering`, `/human-practices`, `/model`, `/alternative-platform`, and `/safety-and-security`.
+The immersive homepage is optional navigation. All judging-relevant pages remain directly reachable at predictable routes such as `/contribution`, `/engineering`, `/human-practices`, `/model`, `/alternative-platform`, `/hardware`, and `/safety-and-security`.
+
+
+## Pixel expedition (September 2026)
+
+Choose **Explore freely** on the homepage. Move with WASD / arrow keys, hold
+Shift to run, and use E near a guide or station. Touch users can hold the
+directional buttons or drag the lake. Escape returns to the guided route.
+The field journal contains three fictional research guides and educational
+activities; it also provides station travel. Progress is saved on the current
+device when browser storage is available. It is never uploaded.
+
+The educational activities simplify pathway concepts and evidence review; they
+are not laboratory protocols, experimental validation or measured learning
+outcomes. See `src/site-data.ts` for team-review project copy.
+
+For an offline review copy, run `npm run preview:single` and open
+`tools/preview/dunaterp-preview.html`. This file uses hash routing; the production
+Wiki continues to use normal paths.

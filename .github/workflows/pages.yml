@@ -48,6 +48,7 @@ jobs:
             experiments \
             results \
             model \
+            hardware \
             contribution \
             human-practices \
             safety-and-security \
