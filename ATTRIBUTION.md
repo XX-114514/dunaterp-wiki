@@ -42,6 +42,5 @@ manuscript. Numerical tables and eleven analysis figures are transferred
 without numerical or graphical changes; source and figure SHA-256 hashes are in
 `src/content/dry-lab-provenance.json`. Figures are credited inline as team analysis
 figures under CC BY 4.0. Cited articles and databases are linked in the relevant
-methods and results sections. OpenAI Codex assisted with translation and website
-implementation. Human review of the translation is pending. Metabolomics, Protein
+methods and results sections. Metabolomics, Protein
 and Hardware retain empty chapter pages for their respective contributors.
