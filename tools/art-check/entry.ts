@@ -6,4 +6,4 @@ export { getAtlas } from "../../src/pixel/sprites";
 export { STATION_COPY, ARCHIVE_COPY } from "../../src/pixel/station-copy";
 export { PixelEngine } from "../../src/pixel/engine";
 export { createNpcs } from "../../src/pixel/npc-data";
-export { isBlockedAt } from "../../src/pixel/world-map";
+export { isBlockedAt, isOnDeck } from "../../src/pixel/world-map";

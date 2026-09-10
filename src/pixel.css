@@ -508,6 +508,8 @@
 .px-world.is-free .px-controls { bottom: 1.7rem; }
 .px-world.is-free .px-prompt { bottom: 7rem; max-width: calc(100% - 2rem); }
 .px-world.is-free .px-route { display: none; }
+.px-world.has-dialogue .ej-launcher,
+.px-world.has-dialogue .px-restart { display: none; }
 .px-world .px-mode-help { font-size: .875rem; }
 .px-controls .px-touch-help { display: none; }
 .px-dpad { display: none; }

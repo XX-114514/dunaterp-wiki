@@ -10,7 +10,9 @@ import "./expedition.css";
 import { getAtlas } from "./pixel/sprites";
 
 /** IDs used by the world engine when an explorer meets a field contact. */
-const EXPEDITION_NPC_IDS = [
+// Shared with the compact in-world dialogue component.
+// eslint-disable-next-line react-refresh/only-export-components
+export const EXPEDITION_NPC_IDS = [
   "biologist",
   "engineer",
   "researcher",
@@ -41,7 +43,7 @@ export type ExpeditionJournalProps = {
 
 type NpcPrompt = { id: string; label: string; response: string };
 
-type Npc = {
+export type ExpeditionNpc = {
   id: ExpeditionNpcId;
   name: string;
   role: string;
@@ -53,7 +55,9 @@ type Npc = {
   prompts: NpcPrompt[];
 };
 
-const NPCS: Record<ExpeditionNpcId, Npc> = {
+// Shared with the compact in-world dialogue component.
+// eslint-disable-next-line react-refresh/only-export-components
+export const NPCS: Record<ExpeditionNpcId, ExpeditionNpc> = {
   "biologist": {
     id: "biologist",
     name: "Dr. Lin",
@@ -231,7 +235,7 @@ function writeProgress(progress: JournalProgress) {
 
 type Feedback = { tone: "hint" | "correct" | "try"; text: string };
 
-function PixelPortrait({ npc }: { npc: Npc }) {
+export function PixelPortrait({ npc }: { npc: ExpeditionNpc }) {
   const portrait = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const ctx = portrait.current?.getContext("2d");
