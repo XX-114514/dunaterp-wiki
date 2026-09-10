@@ -47,6 +47,10 @@ jobs:
             engineering \
             experiments \
             results \
+            dry-lab \
+            transcriptomics \
+            metabolomics \
+            protein \
             model \
             hardware \
             contribution \

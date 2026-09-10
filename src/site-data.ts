@@ -1,9 +1,13 @@
+import type { ContentBlock } from './content/types';
+import { dryLabNavigation, dryLabIndex, emptyDryLabPage, modeling, transcriptomics } from './content/dry-lab';
+
 export type WikiSection = {
   title: string;
   body: string;
   eyebrow?: string;
   items?: string[];
   note?: string;
+  blocks?: ContentBlock[];
 };
 
 export type WikiPage = {
@@ -17,12 +21,16 @@ export type WikiPage = {
 
 export const navigation: Array<{ label: string; items: ReadonlyArray<readonly [string, string]> }> = [
   { label: "Wet Lab", items: [["Description", "/project-description"], ["Engineering", "/engineering"], ["Experiments", "/experiments"], ["Results", "/results"], ["Safety", "/safety-and-security"]] },
-  { label: "Dry Lab", items: [["Model", "/model"], ["Hardware", "/hardware"], ["Alternative Platform", "/alternative-platform"], ["Contribution", "/contribution"]] },
+  { label: "Dry Lab", items: dryLabNavigation },
   { label: "Human Practices", items: [["Human Practices", "/human-practices"], ["Sustainability", "/sustainability"], ["Education", "/education"]] },
   { label: "People", items: [["Team", "/team"], ["Attributions", "/attributions"], ["Responsible AI", "/responsible-ai"]] },
 ];
 
 export const pages: Record<string, WikiPage> = {
+  'dry-lab': dryLabIndex,
+  transcriptomics,
+  metabolomics: emptyDryLabPage('Metabolomics'),
+  protein: emptyDryLabPage('Protein'),
   "project-description": {
     title: "A chassis shaped by salt",
     eyebrow: "Project description",
@@ -61,23 +69,8 @@ export const pages: Record<string, WikiPage> = {
       { title: "Report uncertainty as part of the result", body: "The light-quality dataset required re-quantification against a reference genome after an identifier mismatch was found in archived files. Mapping-rate differences and their effect on detection power must remain visible in the final narrative." },
     ],
   },
-  model: {
-    title: "From promoter sequence to product choice", eyebrow: "Best Model · standard URL", intro: "Three linked layers ask where control moves as the platform is pushed: expression, branch kinetics and network capacity.", status: "team-draft",
-    figure: { src: "/figures/branch-allocation.png", alt: "Model figure showing carotenoid pool allocation, pathway crosstalk and branch selectivity", caption: "Existing team-generated model output. Parameters and validation status must accompany this figure in the final Wiki." },
-    sections: [
-      { eyebrow: "Layer 01", title: "Expression cascade", body: "An ODE cascade links promoter input to LCYB mRNA, active enzyme, lycopene, the β-carotene hub, zeaxanthin and four candidate product fluxes. The model is designed to expose the point where increased expression stops producing a meaningful gain." },
-      { eyebrow: "Layer 02", title: "Branch allocation", body: "Michaelis–Menten branches describe competition for β-carotene and zeaxanthin. The current topology explores whether endogenous BCH would require opposite tuning for β-carotene-consuming and zeaxanthin-consuming product strains." },
-      { eyebrow: "Layer 03", title: "Network capacity", body: "Flux-balance analysis tests growth–product trade-offs and audits conflicting bounds in a published carbon-core model. Model outputs are not experimental evidence and must remain labelled as predictions." },
-    ],
-  },
-  hardware: {
-    title: "Bring light into the culture", eyebrow: "Hardware · cultivation concept", intro: "A flat-panel airlift reactor concept supports the DunaTerp cultivation strategy by bringing illumination, circulation and gas exchange into one design.", status: "team-draft",
-    sections: [
-      { title: "The cultivation problem", body: "As algal biomass accumulates, cells shade one another and experience different light environments. Reactor geometry and circulation therefore matter alongside light-responsive gene regulation. The hardware is intended to help study these interactions, rather than guarantee a higher product yield." },
-      { title: "Two communicating chambers", body: "The proposed flat-panel design uses communicating chambers to organise circulation. Gas-driven density differences can move culture through a rising and a returning region. The flat geometry is intended to shorten the light path; actual illumination uniformity and circulation must be measured on the built device." },
-      { title: "What would establish performance?", body: "Compare the device with a defined reference system and record geometry, illumination distribution, mixing, gas exchange, temperature, energy demand and culture performance. Report biological growth and product measurements separately from engineering observations.", items: ["Link the final drawings and bill of materials to the built revision.", "Record repeat measurements and the uncertainty of each comparison.", "Document cleaning, material compatibility and physical containment."], note: "Concept summary based on the project brief. No fabrication record or validated reactor performance is supplied in this repository." },
-    ],
-  },
+  model: modeling,
+  hardware: emptyDryLabPage('Hardware'),
   contribution: {
     title: "Leave a map for the next team", eyebrow: "Bronze contribution · standard URL", intro: "Candidate contributions described in the project draft are organised here for the team to validate, document and release with their underlying files.", status: "team-draft",
     sections: [
@@ -155,4 +148,8 @@ export const pages: Record<string, WikiPage> = {
   },
 };
 
-export const pageOrder = Object.keys(pages);
+export const pageOrder = [
+  'project-description', 'engineering', 'experiments', 'results',
+  'dry-lab', ...dryLabNavigation.map(([, path]) => path.slice(1)),
+  ...Object.keys(pages).filter((key) => !['project-description', 'engineering', 'experiments', 'results', 'dry-lab', ...dryLabNavigation.map(([, path]) => path.slice(1))].includes(key)),
+];

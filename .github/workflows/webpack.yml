@@ -30,3 +30,8 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Check Dry Lab content
+        env:
+          VITE_BASE_PATH: /dunaterp-wiki/
+        run: npm run check:dry-lab

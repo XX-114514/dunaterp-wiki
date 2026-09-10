@@ -12,6 +12,7 @@ import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import { FontLoader, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
 import helvetikerBold from "three/examples/fonts/helvetiker_bold.typeface.json";
 import type { RoutePhysics, RoutePhysicsInput } from "./route-physics";
+import { dryLabNavigation } from './content/dry-lab';
 
 type HeaderProps = { light?: boolean };
 
@@ -49,8 +50,8 @@ const chapters = [
     n: "03",
     kicker: "TRANSCRIPTOMICS",
     title: "Read the light response",
-    body: "Light intensity and quality become two analysis axes for finding testable regulators around the LCYB control point.",
-    link: "/results",
+    body: "Light-response profiles and pathway coexpression rank transcription-factor homologs alongside their sequence evidence.",
+    link: "/transcriptomics",
     c: "#7de2ff",
   },
   {
@@ -105,12 +106,7 @@ const panelGroups: PanelGroup[] = [
     short: "DL",
     summary: "Connect light, regulation and pathway allocation with reproducible computation.",
     accent: "#7de2ff",
-    links: [
-      { label: "Model", href: "/model", note: "ODE, branch allocation and FBA" },
-      { label: "Transcriptomics", href: "/results", note: "Light response and candidate regulators" },
-      { label: "Alternative Platform", href: "/alternative-platform", note: "Why Dunaliella is the chassis" },
-      { label: "Contribution", href: "/contribution", note: "Reusable workflows and troubleshooting" },
-    ],
+    links: dryLabNavigation.map(([label, href]) => ({ label, href, note: '' })),
   },
   {
     key: "human-practices",
