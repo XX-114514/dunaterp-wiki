@@ -1,0 +1,18 @@
+{
+  "source": "Team-authored transcriptomics and mathematical modeling manuscript",
+  "source_sha256": "a25a60839a3ca384203545f8cea992018ea3a19999af73f33ed67131ad6d48c2",
+  "revision_date": "2026-09-10",
+  "figure_sha256": {
+    "01_gene_recovery.png": "d3ac58241b6451850fe19dc962f682ab3620e8fe3ba81985d715fca7aead340c",
+    "02_tf_candidates.png": "3e0f8cabec820314167d450b92982ed7caea3222ef8f9a975de270ab7222d539",
+    "03_ode_dynamics.png": "a2e44c0720e11926a478d21717de60b38ac99207bbf86faa6542e01c19295dc2",
+    "04_ode_robustness.png": "93154ade06ab75e1c4729e07c22fe7b5f5e1fda318728440c41de9302ba935cc",
+    "05_fba_tradeoff.png": "92013762eda2f92ce2de0c95e90db2b52a341201eac3fa92ed790632ff2b43be",
+    "06_expression_qc.png": "389f4f02ac547ff2eeb60cf04a8ed030d0e06a6f0b3733b3857b9c98d9aead57",
+    "07_differential_expression.png": "49bd2329655fc0b12df007bd5d1ef8fe87bf49c21bb9c16cdf489323debe2b42",
+    "08_response_modules.png": "77493bdecffdb04e871180e67b3449dded6885f9e94af37aa5eb13fb7bc7692c",
+    "09_model_structure.png": "75498f00e927b46e515925e1630acef7c0cfe23c16951d6f9b19d3b08ba43e64",
+    "10_calibration.png": "c4a9175b07bd5d7ce0416da5cbfaf7f02dddcdd8610d24eea7b2b346a473ced3",
+    "11_local_sensitivity.png": "927c9bd885f8c4adc84057b3c7008f81f7a36e28e93b4685e6a540ea73093e77"
+  }
+}

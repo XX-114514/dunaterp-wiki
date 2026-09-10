@@ -1,0 +1,36 @@
+.research-blocks { min-width: 0; overflow-wrap: anywhere; }
+.research-blocks h3 { margin: 2.4rem 0 1rem; font-size: 1.3rem; line-height: 1.4; }
+.research-blocks p { margin: 1.2rem 0; }
+.research-blocks a { color: #176c82; text-underline-offset: .2em; }
+.research-blocks .research-figure { margin: 2rem auto; padding: .75rem; border-radius: .4rem; }
+.research-figure a, .research-figure img { display: block; width: 100%; }
+.figure-credit { display: block; margin-top: .6rem; font-size: .8125rem; }
+.research-table-scroll { width: 100%; overflow-x: auto; margin: 1.8rem 0; border: 1px solid var(--line); border-radius: .35rem; }
+.research-table-scroll table { width: 100%; border-collapse: collapse; font-size: .875rem; line-height: 1.55; font-variant-numeric: tabular-nums; }
+.research-table-scroll caption { text-align: left; font-weight: 650; padding: 1rem; color: var(--ink); }
+.research-table-scroll th, .research-table-scroll td { padding: .7rem .8rem; text-align: center; vertical-align: top; border-top: 1px solid var(--line); min-width: 6rem; }
+.research-table-scroll thead { background: #eaf2ef; }
+.research-table-scroll tbody th { font-weight: 500; }
+.research-table-scroll tbody tr:nth-child(even) { background: #f6f8f7; }
+.research-table-details { margin: 1.8rem 0; border: 1px solid var(--line); padding: 1rem; border-radius: .35rem; }
+.research-table-details summary { cursor: pointer; line-height: 1.6; font-weight: 600; }
+.research-table-details summary span { font-weight: 400; }
+.research-table-details .research-table-scroll { max-height: 38rem; margin-bottom: 0; }
+.research-table-details thead { position: sticky; top: 0; }
+.research-equation, .research-code pre { max-width: 100%; overflow-x: auto; padding: 1.2rem; background: #edf3f1; border-left: 3px solid #26797d; margin: 1.6rem 0; }
+.research-equation pre { margin: 0; font-family: 'Cambria Math', 'STIX Two Math', Georgia, serif; font-size: 1.05rem; line-height: 2; white-space: pre; }
+.research-code pre { font-size: .875rem; line-height: 1.8; }
+.research-code>p { font-size: .875rem; margin-bottom: -.75rem; font-weight: 600; }
+.research-links { padding: 0; list-style: none; }
+.research-links li { margin: .45rem 0; }
+.article-toc { max-height: calc(100vh - 9rem); overflow-y: auto; }
+.related-wiki-pages { display: flex; flex-wrap: wrap; gap: 1rem 2rem; padding: 1rem 0 2rem; }
+.related-wiki-pages a { color: #176c82; }
+@media (max-width: 800px) {
+  .article-toc { max-height: none; }
+  .research-table-scroll th, .research-table-scroll td { padding: .6rem; }
+  .research-table-details { padding: .75rem; }
+}
+@media print {
+  .research-table-details .research-table-scroll { max-height: none; overflow: visible; }
+}

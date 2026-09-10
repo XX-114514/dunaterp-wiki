@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { navigation, pageOrder, pages, type WikiPage } from "./site-data";
+import { ArticleBlocks } from './ArticleBlocks';
 
 const PixelWorld = lazy(() => import("./PixelWorld").then((module) => ({ default: module.PixelWorld })));
 
@@ -52,12 +53,12 @@ function Header({ light = false }: { light?: boolean }) {
     <nav className="desktop-nav" aria-label="Primary navigation">
       {navigation.map((group) => <details key={group.label} name="desktop-navigation">
         <summary className={group.items.some(([, href]) => href === currentPath) ? "is-current" : undefined}>{group.label}<span aria-hidden="true">⌄</span></summary>
-        <div className="nav-popover"><p>{group.label}</p>{group.items.map(([label, href]) => <Link key={href} to={href} aria-current={currentPath === href ? "page" : undefined}>{label}<span aria-hidden="true">↗</span></Link>)}</div>
+        <div className="nav-popover"><p>{group.label === 'Dry Lab' ? <Link to="/dry-lab">Dry Lab overview</Link> : group.label}</p>{group.items.map(([label, href]) => <Link key={href} to={href} aria-current={currentPath === href ? "page" : undefined}>{label}<span aria-hidden="true">↗</span></Link>)}</div>
       </details>)}
       <Link className="nav-index" to="/wiki-map" aria-current={currentPath === "/wiki-map" ? "page" : undefined}>Explore Wiki <span aria-hidden="true">↗</span></Link>
     </nav>
     <details className="mobile-menu"><summary>Menu <span aria-hidden="true">☰</span></summary><nav aria-label="Mobile navigation">
-      {navigation.map((group) => <div className="mobile-nav-group" key={group.label}><p>{group.label}</p>{group.items.map(([label, href]) => <Link key={href} to={href} aria-current={currentPath === href ? "page" : undefined}>{label}</Link>)}</div>)}
+      {navigation.map((group) => <div className="mobile-nav-group" key={group.label}><p>{group.label === 'Dry Lab' ? <Link to="/dry-lab">Dry Lab overview</Link> : group.label}</p>{group.items.map(([label, href]) => <Link key={href} to={href} aria-current={currentPath === href ? "page" : undefined}>{label}</Link>)}</div>)}
       <Link className="mobile-map-link" to="/wiki-map">Explore all pages ↗</Link>
     </nav></details>
   </header>;
@@ -84,6 +85,7 @@ function WikiMap() {
     <header className="map-heading"><div><p className="page-eyebrow">DUNATERP / PROJECT INDEX</p><h1>Explore the<br /><em>whole spectrum.</em></h1></div><p className="map-intro">Follow the science, explore the evidence, and meet the people behind DunaTerp. Every chapter starts here.</p></header>
     <div className="map-grid">{navigation.map((group, index) => <section key={group.label} className={`map-group map-group--${index}`}><header><span className="map-number">0{index + 1}</span><span>{String(group.items.length).padStart(2, "0")} PAGES</span></header><h2>{group.label}</h2><p className="map-description">{groupDescriptions[index]}</p><div className="map-links">{group.items.map(([label, href]) => <Link key={href} to={href}><span>{label}</span><b aria-hidden="true">↗</b></Link>)}</div></section>)}</div>
     <div className="map-return"><span>Start with the story.</span><Link to="/">Return to the salt route <span aria-hidden="true">↗</span></Link></div>
+    <nav className="related-wiki-pages" aria-label="Project-wide pages"><Link to="/dry-lab">Dry Lab overview</Link><Link to="/contribution">Contribution</Link><Link to="/alternative-platform">Alternative Platform</Link></nav>
   </main><Footer /></>;
 }
 
@@ -95,16 +97,19 @@ function Article({ slug }: { slug: string }) {
   const next = pages[nextSlug];
   const group = navigation.find((item) => item.items.some(([, href]) => href === `/${slug}`));
   const figureSrc = page.figure ? resolveFigureSrc(page.figure.src) : "";
+  const hasContent = page.sections.length > 0;
   return <><Header /><main id="main-content" tabIndex={-1} className="article-page">
-    <nav className="breadcrumbs" aria-label="Breadcrumb"><Link to="/wiki-map">Wiki</Link><span aria-hidden="true">/</span><span>{group?.label}</span><span aria-hidden="true">/</span><span aria-current="page">{group?.items.find(([, href]) => href === `/${slug}`)?.[0]}</span></nav>
-    <header className="article-hero"><div><p className="page-eyebrow">{page.eyebrow}</p><h1>{page.title}</h1></div><div className="article-intro"><Status status={page.status} /><p>{page.intro}</p></div></header>
+    <nav className="breadcrumbs" aria-label="Breadcrumb"><Link to="/wiki-map">Wiki</Link><span aria-hidden="true">/</span>{group && <>{group.label === 'Dry Lab' ? <Link to="/dry-lab">Dry Lab</Link> : <span>{group.label}</span>}<span aria-hidden="true">/</span></>}<span aria-current="page">{group?.items.find(([, href]) => href === `/${slug}`)?.[0] || page.title}</span></nav>
+    <header className="article-hero"><div><p className="page-eyebrow">{page.eyebrow}</p><h1>{page.title}</h1></div>{page.intro && <div className="article-intro"><Status status={page.status} /><p>{page.intro}</p></div>}</header>
+    {hasContent && <>
     <div className="article-layout"><aside className="article-toc"><p>ON THIS PAGE</p><nav aria-label="On this page">{page.sections.map((section, i) => <Link key={section.title} to={{ pathname: `/${slug}`, hash: `#section-${i + 1}` }}><span>{String(i + 1).padStart(2, "0")}</span>{section.title}</Link>)}</nav><Link className="toc-map" to="/wiki-map">All chapters ↗</Link></aside>
       <div className="article-body">{page.figure && <figure className="feature-figure"><img src={figureSrc} alt={page.figure.alt} loading="lazy" decoding="async" /><figcaption>{page.figure.caption}</figcaption></figure>}
-        <div className="article-sections">{page.sections.map((section, i) => <section id={`section-${i + 1}`} tabIndex={-1} key={section.title}><div className="section-number">{String(i + 1).padStart(2, "0")}</div><div>{section.eyebrow && <p className="section-eyebrow">{section.eyebrow}</p>}<h2>{section.title}</h2><p>{section.body}</p>{section.items && <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}{section.note && <aside>{section.note}</aside>}</div></section>)}</div>
-        <aside className="review-banner"><span>Team review</span><p>Before Wiki Freeze, a named team reviewer must verify claims, citations, figures, licences, alt text and correspondence with the official judging form.</p></aside>
+        <div className="article-sections">{page.sections.map((section, i) => <section id={`section-${i + 1}`} tabIndex={-1} key={section.title}><div className="section-number">{String(i + 1).padStart(2, "0")}</div><div>{section.eyebrow && <p className="section-eyebrow">{section.eyebrow}</p>}<h2>{section.title}</h2>{section.body && <p>{section.body}</p>}{section.blocks && <ArticleBlocks blocks={section.blocks} />}{section.items && <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>}{section.note && <aside>{section.note}</aside>}</div></section>)}</div>
+        {slug !== 'dry-lab' && <aside className="review-banner"><span>Team review</span><p>Before Wiki Freeze, a named team reviewer must verify claims, citations, figures, licences, alt text and correspondence with the official judging form.</p></aside>}
         <Link className="next-page" to={`/${nextSlug}`}><span>CONTINUE EXPLORING</span><strong>{next.title}</strong><b aria-hidden="true">↗</b></Link>
       </div>
     </div>
+    </>}
   </main><Footer /></>;
 }
 
