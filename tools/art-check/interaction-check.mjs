@@ -5,7 +5,7 @@ installShim();
 document.querySelector = () => null;
 globalThis.window = { matchMedia: () => ({ matches: false }) };
 globalThis.Element = class { constructor(interactive = false) { this.interactive = interactive; } closest() { return this.interactive ? this : null; } };
-const { PixelEngine, createNpcs, isBlockedAt } = await import('./.out/entry.js');
+const { PixelEngine, createNpcs, isBlockedAt, isOnDeck } = await import('./.out/entry.js');
 let talks = 0, entries = 0;
 const engine = new PixelEngine(document.createElement('canvas'), { clientWidth: 1280, clientHeight: 800 }, {
   onLoadProgress() {}, onReady() {}, onMode() {}, onChapter() {}, onPrompt() {},
@@ -15,6 +15,15 @@ const key = (value, interactive = false, repeat = false) => ({ key: value, repea
 engine.enterFree();
 for (const npc of createNpcs(engine.world)) {
   assert.equal(isBlockedAt(engine.world, npc.x, npc.y), false, `${npc.id} must be reachable`);
+  assert.equal(isOnDeck(engine.world, npc.x, npc.y), false, `${npc.id} must start beyond the boardwalk`);
+  assert.ok(npc.activityPoints.length > 1, `${npc.id} must have a usable activity area`);
+  for (const point of npc.activityPoints) {
+    assert.equal(isBlockedAt(engine.world, point.x, point.y), false, `${npc.id} patrol point must be reachable`);
+    assert.equal(isOnDeck(engine.world, point.x, point.y), false, `${npc.id} patrol point must stay off the boardwalk`);
+    const ellipse = ((point.x - npc.homeX) / npc.activityRadiusX) ** 2
+      + ((point.y - npc.homeY) / npc.activityRadiusY) ** 2;
+    assert.ok(ellipse <= 1.01, `${npc.id} patrol point must stay inside its activity area`);
+  }
   Object.assign(engine.hero, { x: npc.x, y: npc.y });
   engine.updateProximity();
   const before = talks;
@@ -24,6 +33,15 @@ for (const npc of createNpcs(engine.world)) {
   assert.equal(talks, before, 'held interaction key cannot reopen dialogue');
   engine.onKeyDown(key('e'));
   assert.equal(talks, before + 1, 'E talks to the nearest NPC');
+}
+const startPositions = engine.npcs.map((npc) => ({ x: npc.x, y: npc.y }));
+const trailhead = engine.world.path.sample(0.001);
+Object.assign(engine.hero, { x: trailhead.x, y: trailhead.y });
+engine.updateProximity();
+for (let frame = 0; frame < 40; frame++) engine.stepNpcs(0.05);
+assert.ok(engine.npcs.some((npc, index) => Math.hypot(npc.x - startPositions[index].x, npc.y - startPositions[index].y) > 1), 'NPCs patrol their areas');
+for (const npc of engine.npcs) {
+  assert.equal(isOnDeck(engine.world, npc.x, npc.y), false, `${npc.id} stays off the boardwalk while moving`);
 }
 engine.setMoveKey('w', true);
 assert.equal(engine.keys.has('w'), true);
@@ -51,4 +69,4 @@ Object.assign(engine.hero, { x: station.x, y: station.y + 6 });
 engine.updateProximity();
 engine.interact();
 assert.equal(entries, 1, 'archive remains reachable');
-console.log('PASS: NPC reachability, interaction priority, keyboard ownership, pause, multitouch, blur, travel and archive');
+console.log('PASS: NPC activity areas, patrol, interaction priority, keyboard ownership, pause, multitouch, blur, travel and archive');

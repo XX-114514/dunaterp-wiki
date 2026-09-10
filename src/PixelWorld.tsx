@@ -9,7 +9,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { PixelEngine, type Mode } from "./pixel/engine";
 import { ARCHIVE_COPY, STATION_COPY } from "./pixel/station-copy";
-import { ExpeditionJournal, type ExpeditionJournalRequest } from "./ExpeditionJournal";
+import { ExpeditionJournal } from "./ExpeditionJournal";
+import { NpcDialogue } from "./NpcDialogue";
 import type { Npc } from "./pixel/npc-data";
 import { navigation } from "./site-data";
 
@@ -50,7 +51,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
   const scrollLock = useRef(0);
 
   const [npcPrompt, setNpcPrompt] = useState<Npc | null>(null);
-  const [journalRequest, setJournalRequest] = useState<ExpeditionJournalRequest | null>(null);
+  const [dialogueNpc, setDialogueNpc] = useState<Npc | null>(null);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -80,7 +81,10 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         onPrompt: (station) => setPromptKey(station ? station.key : null),
         onEnter: (station) => navigate(station.route),
         onNpcPrompt: setNpcPrompt,
-        onNpcInteract: (npc) => setJournalRequest((current) => ({ npcId: npc.id, serial: (current?.serial ?? 0) + 1 })),
+        onNpcInteract: (npc) => {
+          engineRef.current?.setPaused(true);
+          setDialogueNpc(npc);
+        },
       });
     } catch (error) {
       console.error("DunaTerp world failed to start", error);
@@ -191,6 +195,12 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
     else scroll();
   }, []);
 
+  const closeNpcDialogue = useCallback(() => {
+    setDialogueNpc(null);
+    engineRef.current?.setPaused(false);
+    requestAnimationFrame(() => requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })));
+  }, []);
+
   const activeChapter = chapter >= 0 ? STATION_COPY[chapter] : null;
 
   return (
@@ -198,7 +208,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
       id="main-content"
       tabIndex={-1}
       ref={root}
-      className={`px-world${ready ? " is-ready" : ""}${started ? " is-started" : ""}${mode === "free" ? " is-free" : ""}${atArchive ? " is-archive" : ""}${failed ? " has-failed" : ""}`}
+      className={`px-world${ready ? " is-ready" : ""}${started ? " is-started" : ""}${mode === "free" ? " is-free" : ""}${atArchive ? " is-archive" : ""}${failed ? " has-failed" : ""}${dialogueNpc ? " has-dialogue" : ""}`}
     >
       <Header light />
 
@@ -208,7 +218,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           className="px-stage"
           aria-label="A pixel-art salt lake you can walk through"
         >
-          <canvas ref={canvas} className="px-canvas" tabIndex={0} aria-label="Salt lake exploration. Use WASD or arrow keys to move; E to interact; Escape to return to guided mode." />
+          <canvas ref={canvas} className="px-canvas" tabIndex={0} aria-label="Salt lake exploration. Use WASD or arrow keys to move; E to interact with a nearby guide; Escape to return to guided mode." />
         </div>
 
         {!ready && !failed && <LoadingScreen ratio={progress} />}
@@ -250,16 +260,15 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
 
         {mode === "free" && <ExpeditionJournal
           currentStationKey={npcPrompt?.stationKey ?? promptKey}
-          openRequest={journalRequest}
-          onOpenChange={(open) => { engineRef.current?.setPaused(open); if (!open) { setJournalRequest(null); requestAnimationFrame(() => requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true }))); } }}
+          onOpenChange={(open) => { engineRef.current?.setPaused(open); if (!open) requestAnimationFrame(() => requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true }))); }}
           onTravel={(key) => { engineRef.current?.travelToStation(key); canvas.current?.focus({ preventScroll: true }); }}
         />}
-        {npcPrompt && mode === "free" && <div className="px-prompt" style={{ "--px-accent": npcPrompt.accent } as React.CSSProperties}>
+        {npcPrompt && mode === "free" && !dialogueNpc && <div className="px-prompt" style={{ "--px-accent": npcPrompt.accent } as React.CSSProperties}>
           <span className="px-prompt-key">E</span>
-          <div><p>{npcPrompt.role} · FIELD GUIDE</p><button type="button" onClick={() => engineRef.current?.talkToNpc()}>Talk to {npcPrompt.name} ↗</button></div>
+          <div><p>{npcPrompt.role} · OFF-ROUTE FIELD GUIDE</p><button type="button" onClick={() => engineRef.current?.talkToNpc()}>Talk to {npcPrompt.name}</button></div>
         </div>}
 
-        {promptStation && (
+        {promptStation && !dialogueNpc && (
           <div
             className="px-prompt"
             style={{ "--px-accent": promptStation.color } as React.CSSProperties}
@@ -274,7 +283,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           </div>
         )}
 
-        {mode === "free" && <div className="px-dpad" role="group" aria-label="Movement controls">
+        {mode === "free" && !dialogueNpc && <div className="px-dpad" role="group" aria-label="Movement controls">
           {([['w', '↑', 'Move up'], ['a', '←', 'Move left'], ['s', '↓', 'Move down'], ['d', '→', 'Move right']] as const).map(([key, symbol, label]) => (
             <button key={key} type="button" aria-label={label}
               onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); engineRef.current?.setMoveKey(key, true); }}
@@ -287,7 +296,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
           ))}
         </div>}
 
-        <div className="px-controls">
+        {!dialogueNpc && <div className="px-controls">
           <button
             type="button"
             className={`px-mode${mode === "free" ? " is-on" : ""}`}
@@ -303,7 +312,11 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
               <kbd>WASD</kbd> move · <kbd>Shift</kbd> run · <kbd>E</kbd> enter · <kbd>Esc</kbd> return
             </p>
           )}
-        </div>
+        </div>}
+
+        {dialogueNpc && (
+          <NpcDialogue npcId={dialogueNpc.id} onClose={closeNpcDialogue} />
+        )}
 
         <button type="button" className="px-restart" onClick={restart} aria-label="Return to the trailhead">
           ↑

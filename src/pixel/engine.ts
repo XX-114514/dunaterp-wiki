@@ -12,6 +12,7 @@ import { TILE, drag } from "./tiles";
 import {
   buildWorld,
   isBlockedAt,
+  isOnDeck,
   tileAt,
   type Station,
   type World,
@@ -101,6 +102,8 @@ export class PixelEngine {
   /** Stable scene entries; only the hero's position/frame changes per tick. */
   private readonly drawables: Drawable[] = [];
   private readonly heroDrawable: Extract<Drawable, { kind: "hero" }>;
+  private readonly npcDrawables = new Map<Npc["id"], Extract<Drawable, { kind: "npc" }>>();
+  private readonly npcPatrol = new Map<Npc["id"], { target: number; wait: number; distance: number }>();
 
   constructor(canvas: HTMLCanvasElement, host: HTMLElement, events: EngineEvents) {
     this.world = buildWorld();
@@ -118,9 +121,23 @@ export class PixelEngine {
     for (const prop of this.world.props) this.drawables.push({ kind: "prop", prop });
     for (const station of this.world.stations) this.drawables.push({ kind: "station", station });
     this.drawables.push({ kind: "station", station: this.world.archive });
-    for (const npc of this.npcs) {
-      this.drawables.push({ kind: "npc", npc, x: npc.x, y: npc.y, facing: "down", frame: 0 });
-    }
+    this.npcs.forEach((npc, index) => {
+      const drawable: Extract<Drawable, { kind: "npc" }> = {
+        kind: "npc",
+        npc,
+        x: npc.x,
+        y: npc.y,
+        facing: "down",
+        frame: 0,
+      };
+      this.npcDrawables.set(npc.id, drawable);
+      this.npcPatrol.set(npc.id, {
+        target: Math.min(index + 1, npc.activityPoints.length - 1),
+        wait: index * 0.35,
+        distance: 0,
+      });
+      this.drawables.push(drawable);
+    });
     this.heroDrawable = {
       kind: "hero",
       x: this.hero.x,
@@ -482,6 +499,74 @@ export class PixelEngine {
     this.updateFacing(this.hero.vx, this.hero.vy);
     // Keep the page scroll roughly in step so leaving free mode never jumps.
     this.u = this.world.path.nearestU(this.hero.x, this.hero.y);
+    this.stepNpcs(delta);
+  }
+
+  /** Keep each guide walking inside their own off-boardwalk work area. */
+  private stepNpcs(delta: number) {
+    for (const npc of this.npcs) {
+      const drawable = this.npcDrawables.get(npc.id);
+      const patrol = this.npcPatrol.get(npc.id);
+      if (!drawable || !patrol) continue;
+
+      // A nearby guide stops working and turns to acknowledge the visitor.
+      if (this.activeNpc === npc) {
+        const dx = this.hero.x - npc.x;
+        const dy = this.hero.y - npc.y;
+        if (Math.abs(dx) >= Math.abs(dy)) drawable.facing = dx >= 0 ? "right" : "left";
+        else drawable.facing = dy >= 0 ? "down" : "up";
+        drawable.frame = 0;
+        patrol.wait = Math.max(patrol.wait, 0.35);
+        continue;
+      }
+
+      if (patrol.wait > 0) {
+        patrol.wait -= delta;
+        drawable.frame = 0;
+        continue;
+      }
+
+      const points = npc.activityPoints;
+      if (points.length < 2) continue;
+      const target = points[patrol.target % points.length];
+      const dx = target.x - npc.x;
+      const dy = target.y - npc.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < 1.25) {
+        patrol.wait = 0.7 + ((patrol.target + npc.id.length) % 4) * 0.22;
+        patrol.target = (patrol.target + 5) % points.length;
+        drawable.frame = 0;
+        continue;
+      }
+
+      const step = Math.min(distance, npc.activitySpeed * delta);
+      const moveX = (dx / distance) * step;
+      const moveY = (dy / distance) * step;
+      let movedX = 0;
+      let movedY = 0;
+      const nextX = npc.x + moveX;
+      if (!isBlockedAt(this.world, nextX, npc.y) && !isOnDeck(this.world, nextX, npc.y)) {
+        npc.x = nextX;
+        movedX = moveX;
+      }
+      const nextY = npc.y + moveY;
+      if (!isBlockedAt(this.world, npc.x, nextY) && !isOnDeck(this.world, npc.x, nextY)) {
+        npc.y = nextY;
+        movedY = moveY;
+      }
+      if (!movedX && !movedY) {
+        patrol.target = (patrol.target + 1) % points.length;
+        patrol.wait = 0.25;
+        continue;
+      }
+
+      patrol.distance += Math.hypot(movedX, movedY);
+      drawable.x = npc.x;
+      drawable.y = npc.y;
+      if (Math.abs(movedX) >= Math.abs(movedY)) drawable.facing = movedX >= 0 ? "right" : "left";
+      else drawable.facing = movedY >= 0 ? "down" : "up";
+      drawable.frame = this.reducedMotion ? 0 : Math.floor(patrol.distance / 7) % 4;
+    }
   }
 
   private stepGuided(delta: number) {

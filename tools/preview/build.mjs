@@ -19,6 +19,16 @@ function dataUri(file) {
   return `data:${mime[ext] ?? "application/octet-stream"};base64,${fs.readFileSync(file).toString("base64")}`;
 }
 
+function filesBelow(directory) {
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const location = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...filesBelow(location));
+    else if (entry.isFile()) files.push(location);
+  }
+  return files;
+}
+
 let html = fs.readFileSync(path.join(out, "index.html"), "utf8");
 
 // Inline the stylesheet and the module bundle.
@@ -33,10 +43,9 @@ html = html.replace(/<script[^>]*src="([^"]+)"[^>]*><\/script>/g, (_, src) => {
 
 // Inline the favicon and every figure the article pages reference.
 html = html.replace(/href="\.\/favicon\.svg"/g, () => `href="${dataUri(path.join(publicDir, "favicon.svg"))}"`);
-const figures = fs.readdirSync(path.join(publicDir, "figures"));
-for (const figure of figures) {
-  const uri = dataUri(path.join(publicDir, "figures", figure));
-  html = html.split(`figures/${figure}`).join(uri);
+for (const figure of filesBelow(path.join(publicDir, "figures"))) {
+  const publicPath = path.relative(publicDir, figure).split(path.sep).join("/");
+  html = html.split(publicPath).join(dataUri(figure));
 }
 
 // The app resolves figure paths through BASE_URL; with base "./" that leaves a
