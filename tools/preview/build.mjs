@@ -41,11 +41,13 @@ html = html.replace(/<script[^>]*src="([^"]+)"[^>]*><\/script>/g, (_, src) => {
   return `<script type="module">\n${js}\n</script>`;
 });
 
-// Inline the favicon and every figure the article pages reference.
+// Inline the favicon and every public image referenced by the application.
 html = html.replace(/href="\.\/favicon\.svg"/g, () => `href="${dataUri(path.join(publicDir, "favicon.svg"))}"`);
-for (const figure of filesBelow(path.join(publicDir, "figures"))) {
-  const publicPath = path.relative(publicDir, figure).split(path.sep).join("/");
-  html = html.split(publicPath).join(dataUri(figure));
+for (const directory of ["figures", "landing"]) {
+  for (const image of filesBelow(path.join(publicDir, directory))) {
+    const publicPath = path.relative(publicDir, image).split(path.sep).join("/");
+    html = html.split(publicPath).join(dataUri(image));
+  }
 }
 
 // The app resolves figure paths through BASE_URL; with base "./" that leaves a
