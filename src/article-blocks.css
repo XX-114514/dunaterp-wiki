@@ -1,6 +1,13 @@
 .research-blocks { min-width: 0; overflow-wrap: anywhere; }
 .research-blocks h3 { margin: 2.4rem 0 1rem; font-size: 1.3rem; line-height: 1.4; }
 .research-blocks p { margin: 1.2rem 0; }
+.article-sections .research-blocks > p {
+  width: 100%;
+  max-width: none;
+  text-align: justify;
+  text-align-last: left;
+  hyphens: auto;
+}
 .research-blocks a { color: #176c82; text-underline-offset: .2em; }
 .research-blocks .research-figure { margin: 2rem auto; padding: .75rem; border-radius: .4rem; }
 .research-figure a, .research-figure img { display: block; width: 100%; }
@@ -21,12 +28,14 @@
 .research-equation pre { margin: 0; font-family: 'Cambria Math', 'STIX Two Math', Georgia, serif; font-size: 1.05rem; line-height: 2; white-space: pre; }
 .research-code pre { font-size: .875rem; line-height: 1.8; }
 .research-code>p { font-size: .875rem; margin-bottom: -.75rem; font-weight: 600; }
-.research-links { padding: 0; list-style: none; }
+.article-sections .research-links { padding: 0; list-style: none; }
+.article-sections .research-links li { padding-left: 0; }
 .research-links li { margin: .45rem 0; }
 .article-toc { max-height: calc(100vh - 9rem); overflow-y: auto; }
 .related-wiki-pages { display: flex; flex-wrap: wrap; gap: 1rem 2rem; padding: 1rem 0 2rem; }
 .related-wiki-pages a { color: #176c82; }
 @media (max-width: 800px) {
+  .article-sections .research-blocks > p { text-align: left; }
   .article-toc { max-height: none; }
   .research-table-scroll th, .research-table-scroll td { padding: .6rem; }
   .research-table-details { padding: .75rem; }
