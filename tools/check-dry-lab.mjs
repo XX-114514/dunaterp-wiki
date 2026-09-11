@@ -12,6 +12,11 @@ try {
   const { pages, navigation, pageOrder } = await server.ssrLoadModule('/src/site-data.ts');
   const { ArticleBlocks } = await server.ssrLoadModule('/src/ArticleBlocks.tsx');
   const items = navigation.find(g => g.label === 'Dry Lab').items;
+  const appSource = fs.readFileSync('src/App.tsx', 'utf8');
+  assert(appSource.includes('<div className="nav-popover"><p>{group.label}</p>'), 'Dropdown titles must share identical markup');
+  assert(!appSource.includes('<Link to="/dry-lab">Dry Lab overview</Link> : group.label'), 'No special Dry Lab title link');
+  const articleCss = fs.readFileSync('src/article-blocks.css', 'utf8');
+  assert(/\.article-sections \.research-blocks > p\s*\{[^}]*max-width:\s*none/.test(articleCss), 'Research prose must share the figure/table column width');
   assert.deepEqual(items.map(([label]) => label), ['Transcriptomics','Metabolomics','Protein','Mathematical Modeling','Hardware']);
   assert.equal(new Set(pageOrder).size, pageOrder.length);
   for (const [, href] of items) assert(pages[href.slice(1)], `Missing route ${href}`);
