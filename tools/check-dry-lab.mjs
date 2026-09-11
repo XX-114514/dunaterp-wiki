@@ -26,6 +26,7 @@ try {
   }
   let figures = 0;
   let tables = 0;
+  let equations = 0;
   for (const slug of ['dry-lab','transcriptomics','model']) {
     const page = pages[slug];
     assert(!/[\u3400-\u9fff]/u.test(JSON.stringify(page)), `Non-English content: ${slug}`);
@@ -40,6 +41,10 @@ try {
           tables++;
           assert(block.rows.every(row => row.length === block.columns.length), block.caption);
         }
+        if (block.kind === 'equation') {
+          equations++;
+          assert(block.text.includes('\\'), `Equation is not LaTeX: ${block.label}`);
+        }
         if (block.kind === 'links') for (const link of block.links) {
           if (link.href.startsWith('/')) assert(pages[link.href.slice(1)], link.href);
           else assert.equal(new URL(link.href).protocol, 'https:');
@@ -49,6 +54,9 @@ try {
         React.createElement(ArticleBlocks, { blocks: section.blocks ?? [] })));
       assert(!html.includes('undefined'), section.title);
       assert(!html.includes('src="/figures/'), 'Figure omitted deployment base');
+      const sectionEquationCount = (section.blocks ?? []).filter(block => block.kind === 'equation').length;
+      assert.equal((html.match(/class="katex-display"/g) ?? []).length, sectionEquationCount, `KaTeX display output: ${section.title}`);
+      assert.equal((html.match(/<math xmlns="http:\/\/www\.w3\.org\/1998\/Math\/MathML"/g) ?? []).length, sectionEquationCount, `MathML output: ${section.title}`);
     }
   }
   const data = JSON.parse(fs.readFileSync('src/content/dry-lab-tables.json','utf8'));
@@ -58,15 +66,18 @@ try {
   assert.equal(data.PARAMETERS.rows.length,31);
   assert.equal(data.ELASTICITY.rows.length,29);
   const ode = pages.model.sections.flatMap(s=>s.blocks ?? []).find(b=>b.kind==='equation' && b.label==='Nine-state ODE system');
-  assert.equal(ode.text.split('\n').length,9);
+  for (const state of ['m','E','L','B','Z','I','A','C','R']) {
+    assert(ode.text.includes(`\\frac{d${state}}{dt}`), `Missing ODE for ${state}`);
+  }
   const provenance = JSON.parse(fs.readFileSync('src/content/dry-lab-provenance.json','utf8'));
   for (const [file, hash] of Object.entries(provenance.figure_sha256)) {
     assert.equal(createHash('sha256').update(fs.readFileSync(`public/figures/dry-lab/${file}`)).digest('hex'), hash);
   }
   assert.equal(figures,11);
+  assert.equal(equations,12);
   const workflow = fs.readFileSync('.github/workflows/pages.yml','utf8');
   for(const slug of ['dry-lab','transcriptomics','metabolomics','protein','model','hardware']) assert(workflow.includes(`            ${slug} \\`));
-  console.log(`Dry Lab checks passed: 5 ordered chapters, 3 empty pages, ${figures} unchanged figures, ${tables} tables, 333 ranked transcripts and 9 ODEs.`);
+  console.log(`Dry Lab checks passed: 5 ordered chapters, 3 empty pages, ${figures} unchanged figures, ${tables} tables, ${equations} rendered equation blocks, 333 ranked transcripts and 9 ODEs.`);
 } finally {
   await server.close();
 }
