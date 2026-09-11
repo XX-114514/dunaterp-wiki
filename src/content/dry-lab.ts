@@ -35,7 +35,11 @@ export const transcriptomics: WikiPage = {
     section('Expression filtering and sample structure',
       p('The original matrix contains 76,875 expression features. Keeping features with FPKM ≥ 1 in at least three samples leaves 36,411 features. This retains transcripts expressed mainly in one light-intensity group while reducing the contribution of consistently near-zero features.'),
       p('For sample-scale estimation, 0.5 was added to FPKM to give finite logarithms at zero. The geometric mean of each feature across nine samples defines a reference; the median ratio of a sample to that reference defines its scale factor. The pseudocount 0.5 is used only for estimating the scale factor. Normalized FPKM is the original FPKM divided by that factor.'),
-      eq('Sample-scale correction', 'G_g = exp[(1/9) Σ_j ln(F_gj + 0.5)]\ns_j = median_g[(F_gj + 0.5) / G_g]\nx_gj = log₂(F_gj / s_j + 1)'),
+      eq('Sample-scale correction', String.raw`\begin{aligned}
+G_g &= \exp\!\left[\frac{1}{9}\sum_{j=1}^{9}\ln\!\left(F_{gj}+0.5\right)\right],\\
+s_j &= \operatorname{median}_g\!\left(\frac{F_{gj}+0.5}{G_g}\right),\\
+x_{gj} &= \log_2\!\left(\frac{F_{gj}}{s_j}+1\right).
+\end{aligned}`),
       p('Here F_gj is FPKM for feature g in sample j, s_j is the sample-scale factor, and x_gj is the value used for exploratory tests and plots. This adds a sample-composition correction to the uploaded FPKM before modeling log-expression variance.'),
       customTable('Sample-scale factors', ['Sample', 'Factor'], [['LL1','1.0712'],['LL2','1.0566'],['LL3','1.0034'],['ML1','1.0658'],['ML2','1.1239'],['ML3','1.0694'],['HL1','0.9310'],['HL2','0.8982'],['HL3','0.9307']]),
       p('The factors range from 0.8982 to 1.1239. Expression distributions were inspected after normalization. PCA used the 5,000 retained features with the highest variance, centered each feature, and preserved the differences in feature variance. PC1 and PC2 explain 35.45% and 14.96% of variance, respectively.'),
@@ -45,7 +49,11 @@ export const transcriptomics: WikiPage = {
     ),
     section('Differential expression',
       p('Each exploratory comparison uses two groups of three samples. For every feature, the difference between mean log expression, the within-group residual sum of squares and a residual variance with four degrees of freedom were calculated. Empirical Bayes estimation supplies a prior variance s₀² and prior degrees of freedom d₀, shrinking individual variances toward this prior.'),
-      eq('Moderated t statistic', 'Δ_g = mean(x_g,a) − mean(x_g,b)\ns²_g,post = (d₀s₀² + 4s_g²) / (d₀ + 4)\nt_g = Δ_g / √[s²_g,post × (1/3 + 1/3)]'),
+      eq('Moderated t statistic', String.raw`\begin{aligned}
+\Delta_g &= \bar{x}_{g,a}-\bar{x}_{g,b},\\
+s_{g,\mathrm{post}}^2 &= \frac{d_0s_0^2+4s_g^2}{d_0+4},\\
+t_g &= \frac{\Delta_g}{\sqrt{s_{g,\mathrm{post}}^2\left(\frac{1}{3}+\frac{1}{3}\right)}}.
+\end{aligned}`),
       p('Two-sided P values use a t distribution with d₀ + 4 degrees of freedom. Priors were fitted separately for the three comparisons, giving d₀ ≈ 1.4817, 1.4344 and 1.4592. Benjamini–Hochberg adjustment was applied within each comparison across all tested features. The exploratory code column log2FC stores Δ_g, the difference in mean log₂(normalized FPKM + 1); the +1 transformation affects fold interpretation at low expression.'),
       customTable('Exploratory differential-expression counts: FDR < 0.05 and |Δ_g| ≥ 1', ['Comparison', 'Upregulated', 'Downregulated', 'Total'], [['600/150','1,990','1,022','3,012'],['1500/150','2,088','1,789','3,877'],['1500/600','4,384','5,183','9,567']]),
       p('The union contains 11,583 features. The counting unit is a Trinity expression feature; several transcripts can correspond to one gene. Individual expression patterns and functional annotations provide the basis for subsequent candidate ranking.'),
@@ -54,7 +62,10 @@ export const transcriptomics: WikiPage = {
     ),
     section('Light-response modules',
       p('For the 11,583 differential features, mean log expression was calculated in each of the three conditions and standardized within each feature. The population standard deviation (ddof = 0) was used. Features with nonzero between-condition standard deviation entered shape clustering.'),
-      eq('Within-feature standardization', 'z_g = [a_g − mean(a_g)] / sd(a_g)\na_g = [mean(x_g,150), mean(x_g,600), mean(x_g,1500)]'),
+      eq('Within-feature standardization', String.raw`\begin{aligned}
+\mathbf{a}_g &= \left(\bar{x}_{g,150},\bar{x}_{g,600},\bar{x}_{g,1500}\right),\\
+\mathbf{z}_g &= \frac{\mathbf{a}_g-\operatorname{mean}(\mathbf{a}_g)}{\operatorname{sd}(\mathbf{a}_g)}.
+\end{aligned}`),
       p('K-means compared k = 4–8 using k-means++ initialization, Euclidean distance, 40 initializations and at most 200 iterations per fit. Silhouette scores were calculated on the same 3,000-feature subsample. The random seed for model selection and bootstrap analyses was 20260826. The scores for k = 4, 5, 6, 7 and 8 were 0.5273, 0.5489, 0.5303, 0.5160 and 0.5162. Module labels were reordered by centroid shape after selecting k = 5.'),
       fig('08_response_modules','Five light-response module profiles and silhouette scores for choosing k.', 'Figure 3. A–E: average member Z-scores, with shaded 10th–90th percentiles of the member distribution. The x-axis contains three measured light intensities; lines connect these discrete conditions. F: silhouette scores across the tested k values.'),
       customTable('Selected response modules', ['Module', 'Features', 'Centroid expression order'], [['M1','991','150 > 600 > 1500'],['M2','1,578','600 > 1500 > 150'],['M3','4,023','600 > 150 > 1500'],['M4','1,708','1500 > 600 > 150'],['M5','3,283','1500 > 150 > 600']]),
@@ -76,7 +87,7 @@ export const transcriptomics: WikiPage = {
     ),
     section('Pathway results and published genes',
       p('Historical primary-hit annotation identified 45 pathway candidates; DESeq padj < 0.05 retained 20. All 16 transcripts in the paper’s Table 2 occur in this set. The other four are CBR Cluster-5009.29887, Cluster-5009.30798 and Cluster-5009.43203, and CGP Cluster-5009.33066. The table below follows the paper’s 16 identifiers in their original order.'),
-      eq('Count-based fold change', 'fold_g,600/150 = mean_ML(C_gj / s_j,count) / mean_LL(C_gj / s_j,count)'),
+      eq('Count-based fold change', String.raw`\operatorname{fold}_{g,600/150}=\frac{\operatorname{mean}_{j\in\mathrm{ML}}\!\left(C_{gj}/s^{\mathrm{count}}_j\right)}{\operatorname{mean}_{j\in\mathrm{LL}}\!\left(C_{gj}/s^{\mathrm{count}}_j\right)}.`),
       p('C denotes rounded counts. Size factors use features positive in all six samples. Fold changes and adjusted P values come from the same DESeq fit. All 16 published identifiers reach padj < 0.05 with matching directions. Pearson r between the two log₂-fold columns is 0.999996; median and maximum absolute differences are 0.001946 and 0.010124. For LCYB Cluster-5009.34218, recalculated fold = 1.46387 and padj = 1.12742 × 10⁻¹⁰, compared with published values of 1.46 and 1.13 × 10⁻¹⁰.'),
       fig('01_gene_recovery','Published versus recalculated fold changes for the 16 shared Trinity identifiers.', 'Figure 4. A: published (open) and recalculated (filled) log₂-fold changes by identifier. Labels abbreviate the Cluster-5009. prefix. B: the same values plotted against each other, with y = x as a dashed reference. CGP denotes carotene globule protein. The displayed identifiers are the 16 shared with the published Table 2.'),
       table('RECOVERY','Published Table 2 and DESeq recalculation'),
@@ -99,7 +110,11 @@ export const transcriptomics: WikiPage = {
       p('The calculation follows the Mutual Rank definition and multi-reference logit aggregation described by ATTED-II. MutRank provides an example of combining coexpression retrieval with differential expression, functional annotation and domain evidence. Here, the rankings are calculated from the nine-sample expression matrix.'),
       links(['ATTED-II Mutual Rank','https://atted.jp/static/help/mr.shtml'],['ATTED-II multi-reference aggregation','https://doi.org/10.1093/pcp/pcx191'],['MutRank','https://doi.org/10.7717/peerj.10264']),
       p('Pearson correlation was calculated for every candidate–reference pair. Both directional ranks were calculated against the entire expressed background, excluding self-comparisons, with correlations ranked from highest to lowest and ties assigned average ranks. Mutual Rank is the geometric mean of the two directional ranks.'),
-      eq('Mutual Rank and pathway aggregation', 'MR_ij = √(R_i→j × R_j→i)\nS_i = Σ_j w_j ln[MR_ij / (N − MR_ij)]\nMR*_i = N / [1 + exp(−S_i)]'),
+      eq('Mutual Rank and pathway aggregation', String.raw`\begin{aligned}
+MR_{ij} &= \sqrt{R_{i\to j}R_{j\to i}},\\
+S_i &= \sum_j w_j\ln\!\left(\frac{MR_{ij}}{N-MR_{ij}}\right),\\
+MR_i^* &= \frac{N}{1+\exp(-S_i)}.
+\end{aligned}`),
       p('N is the expressed-background size. Each enzyme class receives equal total weight, split equally among its reference transcripts. Smaller integrated MR indicates a stronger same-direction association with the reference set. Candidates are sorted by increasing integrated MR, with exact ties broken by identifier. Family labels do not enter the score. Inverse integrated MR uses the opposite correlation order and is reported separately. Correlation and MR are dimensionless. Coexpression supplies candidate priority; binding and functional evidence determine promoter interaction and regulatory direction.'),
       h('Ranked transcripts'),
       p('C2H2 homolog Cluster-5009.32526 ranks first (integrated MR 9996.9), C2H2 homolog Cluster-5009.43049 second (10299.5), and NF-YC homolog Cluster-5009.41188 third (10828.8). Across nine leave-one-sample-out recalculations, their rank ranges are 1–2, 1–4 and 1–4. The first two match the same reference protein with reference coverage of 11.55% and 7.87%, respectively.'),
@@ -130,11 +145,26 @@ export const modeling: WikiPage = {
     ),
     section('Nine differential equations',
       p('Each balance subtracts outgoing rates from incoming rates. Transcription supplies m at rate u, and translation supplies E at rate k_tl m. Three consumption terms compete for B, and two compete for Z.'),
-      eq('Nine-state ODE system', 'dm/dt = u − (δ_m + μ)m\ndE/dt = k_tl m − (δ_E + μ)E\ndL/dt = v_supply − v_LCYB − k_L L\ndB/dt = v_LCYB − v_CCD1 − v_BKT − v_BCH − (k_B + μ)B\ndZ/dt = v_BCH − v_GjCCD4a − v_CitCCD4 − (k_Z + μ)Z\ndI/dt = 2v_CCD1 − (k_I + μ)I\ndA/dt = v_BKT − (k_A + μ)A\ndC/dt = v_GjCCD4a − (k_C + μ)C\ndR/dt = v_CitCCD4 − (k_R + μ)R'),
+      eq('Nine-state ODE system', String.raw`\begin{aligned}
+\frac{dm}{dt} &= u-(\delta_m+\mu)m,\\
+\frac{dE}{dt} &= k_{\mathrm{tl}}m-(\delta_E+\mu)E,\\
+\frac{dL}{dt} &= v_{\mathrm{supply}}-v_{\mathrm{LCYB}}-k_LL,\\
+\frac{dB}{dt} &= v_{\mathrm{LCYB}}-v_{\mathrm{CCD1}}-v_{\mathrm{BKT}}-v_{\mathrm{BCH}}-(k_B+\mu)B,\\
+\frac{dZ}{dt} &= v_{\mathrm{BCH}}-v_{\mathrm{GjCCD4a}}-v_{\mathrm{CitCCD4}}-(k_Z+\mu)Z,\\
+\frac{dI}{dt} &= 2v_{\mathrm{CCD1}}-(k_I+\mu)I,\\
+\frac{dA}{dt} &= v_{\mathrm{BKT}}-(k_A+\mu)A,\\
+\frac{dC}{dt} &= v_{\mathrm{GjCCD4a}}-(k_C+\mu)C,\\
+\frac{dR}{dt} &= v_{\mathrm{CitCCD4}}-(k_R+\mu)R.
+\end{aligned}`),
       p('The transcript and enzyme states allow a gradual response after input changes. The factor 2 in the I equation is the assumed stoichiometry of the lumped CCD1 cleavage. The other product equations use unit product flow for their corresponding lumped branches.'),
       p('Losses are first order. Growth dilution μ is explicit for m, E, B, Z and the four products. The L equation uses k_L as a net loss coefficient. This asymmetric treatment is a baseline simplification; k_L includes the loss represented in the L balance.'),
       h('Transcription and saturating reaction rates'),
-      eq('Input and reaction functions', 'θ = CPPⁿ / (K_CPPⁿ + CPPⁿ)\nu = α₀ + (α₁ − α₀)θ\nv_LCYB = q_LCYB E L / (K_m,LCYB + L)\nv_j = V_max,j S / (K_m,j + S)'),
+      eq('Input and reaction functions', String.raw`\begin{aligned}
+\theta &= \frac{CPP^n}{K_{\mathrm{CPP}}^n+CPP^n},\\
+u &= \alpha_0+(\alpha_1-\alpha_0)\theta,\\
+v_{\mathrm{LCYB}} &= q_{\mathrm{LCYB}}E\frac{L}{K_{m,\mathrm{LCYB}}+L},\\
+v_j &= V_{\max,j}\frac{S}{K_{m,j}+S}.
+\end{aligned}`),
       p('CCD1, BKT and BCH use S = B; GjCCD4a and CitCCD4 use S = Z. Metabolic rates have units µmol L⁻¹ d⁻¹. The Hill term θ lies between 0 and 1; CPP and K_CPP share concentration units. CPP = K_CPP gives θ = 0.5, while n controls steepness. α₀ and α₁ are the low-input and saturated transcription rates in nmol transcript L⁻¹ d⁻¹. Their ordering, α₁ > α₀, defines the positive-input hypothesis used here.'),
       p('LCYB capacity is q_LCYB E and therefore changes with enzyme abundance. Other branches use fixed Vmax values that combine enzyme abundance, activity and lumped-step capacity. Km is the substrate concentration at half capacity. For example, q_LCYB in µmol mg⁻¹ d⁻¹ multiplied by E in mg L⁻¹ gives µmol L⁻¹ d⁻¹. Likewise, k_tl in mg nmol⁻¹ d⁻¹ multiplied by m in nmol L⁻¹ gives mg L⁻¹ d⁻¹.'),
     ),
@@ -147,14 +177,20 @@ export const modeling: WikiPage = {
     section('Literature parameters and concentration scales',
       p('Cross-species LCYB enzyme data from Mialoundama et al. (2010) give q_LCYB = 3.12 µmol mg⁻¹ d⁻¹ and Km = 4.5 µmol L⁻¹. The specific activity was converted from 130 nmol mg⁻¹ h⁻¹. Lan et al. (2022) provide Dunaliella endpoints: a 5.2-fold LCYB transcript change, 1.8-fold β-carotene change, 1.23-fold β-cryptoxanthin change and total carotenoid content of 8.46 mg gDW⁻¹.'),
       links(['Mialoundama et al., 2010','https://doi.org/10.1104/pp.110.155440'],['Lan et al., 2022','https://doi.org/10.4014/jmb.2208.08044'],['Cultivation biomass scale · Plants, 2022','https://doi.org/10.3390/plants11233229']),
-      eq('Unit conversions', '130 nmol mg⁻¹ h⁻¹ × 24 h d⁻¹ / 1000 = 3.12 µmol mg⁻¹ d⁻¹\n8.46 mg gDW⁻¹ × 0.695 gDW L⁻¹ × (1000 / 536.87) µmol mg⁻¹\n= 10.9518 µmol L⁻¹'),
+      eq('Unit conversions', String.raw`\begin{aligned}
+130\ \frac{\mathrm{nmol}}{\mathrm{mg}\,\mathrm{h}}\times24\ \frac{\mathrm{h}}{\mathrm{d}}\times\frac{1\ \mathrm{\mu mol}}{1000\ \mathrm{nmol}} &= 3.12\ \frac{\mathrm{\mu mol}}{\mathrm{mg}\,\mathrm{d}},\\[0.4em]
+8.46\ \frac{\mathrm{mg}}{\mathrm{gDW}}\times0.695\ \frac{\mathrm{gDW}}{\mathrm{L}}\times\frac{1000}{536.87}\ \frac{\mathrm{\mu mol}}{\mathrm{mg}} &= 10.9518\ \mathrm{\mu mol\,L^{-1}}.
+\end{aligned}`),
       p('The concentration conversion combines biomass of 0.695 gDW L⁻¹ from a separate cultivation study with a β-carotene-equivalent molecular weight of 536.87 g mol⁻¹. The resulting 10.9518 µmol L⁻¹ is a cross-study concentration-scale constraint. β-cryptoxanthin fold change constrains the BCH layer, while the model state Z is zeaxanthin, making this a layer-level proxy. LCYB q and Km retain the cross-species enzyme values.'),
     ),
     section('Endpoint fitting',
       p('The four engineered product branches were disabled during fitting, retaining the native LCYB–BCH precursor layer. The wild-type transcript baseline was m_WT = 1, with δ_m = ln(2)/0.25, δ_E = ln(2)/1 and μ = 0.2 d⁻¹. Wild-type balance fixes α₀ = (δ_m + μ)m_WT and k_tl = (δ_E + μ)E_WT/m_WT; the published transcript fold fixes α₁ = 5.2α₀. The five fitted quantities are E_WT, v_supply, V_max,BCH, k_B and k_Z.'),
       p('Positive parameters were fitted in log space. The wild-type system was integrated for 180 d and then exposed to the overexpression input for 3 d. Residuals combine endpoint constraints with a log-parameter prior of residual weight 0.001. Priors are 0.35, 7, 2, ln(2)/7 and ln(2)/7; lower bounds are 0.005, 0.2, 0.02, 0.005 and 0.005; upper bounds are 10, 80, 40, 3 and 3, in the respective parameter units.'),
       p('CPP was 0 for the wild-type solve and 10⁶ for the saturated-input approximation. The wild-type terminal maximum absolute right-hand-side value was checked against 2 × 10⁻⁵ before overexpression simulation. The 5.2-fold RNA target also fixes the input ratio, so matching this fold reflects enforcement of that constraint.'),
-      eq('Regularized fitting objective', 'η_j = ln(p_j)\nJ(η) = Σ_i∈F [ln(ŷ_i(η) / y_i)]²\n       + 10⁻⁶ Σ_j=1…5 (η_j − η_j,prior)²'),
+      eq('Regularized fitting objective', String.raw`\begin{aligned}
+\eta_j &= \ln p_j,\\
+J(\boldsymbol{\eta}) &= \sum_{i\in\mathcal{F}}\left[\ln\frac{\widehat{y}_i(\boldsymbol{\eta})}{y_i}\right]^2+10^{-6}\sum_{j=1}^{5}\left(\eta_j-\eta_{j,\mathrm{prior}}\right)^2.
+\end{aligned}`),
       p('F contains transcript fold, B fold, the BCH-layer proxy fold and the converted concentration endpoint. SciPy least_squares used bounds, xtol = ftol = gtol = 10⁻¹⁰ and at most 1,200 function evaluations. The inner LSODA solver used rtol = 2 × 10⁻⁷ and atol = 10⁻⁹. Log parameterization enforces positivity; priors and bounds select a numerical solution under limited endpoint constraints.'),
       fig('10_calibration','Published endpoint targets, fitted outputs and a held-out total-pigment fold check.', 'Figure 2. A: published and model OE/WT folds. The first three enter the fit; LCYB RNA fold also sets the input ratio. The starred L+B+Z fold is a held-out contextual check. B: the cross-study concentration target and fitted three-pool total. Bars represent point estimates.'),
       table('FIT','Endpoint constraints and model outputs'),
@@ -162,7 +198,10 @@ export const modeling: WikiPage = {
     ),
     section('Engineering capacities and baseline parameters',
       p('Engineered capacities were added after fitting the native layer. CCD1 and BKT each consume 10% of wild-type LCYB flux at the wild-type B pool, while GjCCD4a and CitCCD4 each consume 15% of wild-type BCH flux at the wild-type Z pool. These scenario fractions and Km values determine Vmax.'),
-      eq('Baseline branch capacities', 'V_max,CCD1 = V_max,BKT = 0.10 v_LCYB,WT (4 + B_WT) / B_WT\nV_max,GjCCD4a = V_max,CitCCD4 = 0.15 v_BCH,WT (1 + Z_WT) / Z_WT'),
+      eq('Baseline branch capacities', String.raw`\begin{aligned}
+V_{\max,\mathrm{CCD1}}=V_{\max,\mathrm{BKT}} &= 0.10\,v_{\mathrm{LCYB,WT}}\frac{4+B_{\mathrm{WT}}}{B_{\mathrm{WT}}},\\
+V_{\max,\mathrm{GjCCD4a}}=V_{\max,\mathrm{CitCCD4}} &= 0.15\,v_{\mathrm{BCH,WT}}\frac{1+Z_{\mathrm{WT}}}{Z_{\mathrm{WT}}}.
+\end{aligned}`),
       p('The constants 4 and 1 are the first- and second-level Km values in µmol L⁻¹; 0.10 and 0.15 are dimensionless allocation assumptions. First-level Vmax values are 0.653606 and second-level values are 0.289654 µmol L⁻¹ d⁻¹. Baseline half-lives are 0.25 d for m, 1 d for E and 7 d for selected metabolites. Growth dilution is fixed at μ = 0.2 d⁻¹.'),
       table('PARAMETERS','Baseline parameters, units and provenance'),
       p('The table distinguishes enzyme measurements, fitted values, concentration-scale assumptions and engineering settings. A literature link for a fitted or scale-derived parameter identifies the constraint source; the fitting and conversion equations specify how the parameter was obtained.'),
@@ -180,7 +219,7 @@ export const modeling: WikiPage = {
     ),
     section('Local sensitivity',
       p('Each parameter was individually multiplied by 0.8 and 1.2, holding the initial state fixed. Day-7 product concentrations were compared by a logarithmic finite-difference elasticity.'),
-      eq('Dimensionless elasticity', 'ε_Y,p = [ln Y(1.2p) − ln Y(0.8p)] / [ln(1.2) − ln(0.8)]'),
+      eq('Dimensionless elasticity', String.raw`\varepsilon_{Y,p}=\frac{\ln Y(1.2p)-\ln Y(0.8p)}{\ln(1.2)-\ln(0.8)}.`),
       p('Positive elasticity indicates increasing product with increasing parameter; negative elasticity indicates a decrease over this perturbation interval.'),
       fig('11_local_sensitivity','Local elasticities of twelve leading parameters for four modeled products.', 'Figure 4. Parameters were ordered by their largest absolute elasticity across the four products, and the first twelve are shown. V denotes branch Vmax, Km denotes the Michaelis constant, v_supply the supply rate, μ growth dilution, and k_I and k_A product-loss coefficients. Colors follow the dynamics plot. Each point is a finite-difference model result.'),
       p('CCD1 capacity has elasticity 0.9306 for I, and BKT capacity 0.9306 for A. GjCCD4a capacity has elasticity 0.9788 for C, and CitCCD4 capacity 0.9788 for R. BCH capacity has elasticity −0.4894 for I/A and +0.0955 for C/R, reflecting competition for entry into the second level. Supply-rate elasticities are +0.7186 for I/A and +0.0922 for C/R.'),
@@ -203,7 +242,12 @@ export const modeling: WikiPage = {
       p('Eight bound differences involve Car03, Car04, Car09, Ex01, Light1, Ox06, THF03 and THF04, split equally between capacity and reversibility differences. The adopted scenario starts from workbook bounds, changes Car09 to the SBML upper bound of 100, and exports lutein and violaxanthin as boundary pools according to their SBML definition. All eight reference scenarios have feasible solutions, with a maximum absolute difference of 200 from reference fluxes. The growth–product calculations below use this explicit reconciled scenario.'),
       table('BOUNDS','Reaction bounds [lower, upper] in mmol gDW⁻¹ h⁻¹'),
       h('Steady-state optimization'),
-      eq('Product capacity and maximum growth', 'Sv = 0;  l ≤ v ≤ u\nProduct capacity = max_v v_Car14\nμ_max(p) = max_v v_biomass\nsubject to Sv = 0, l ≤ v ≤ u and v_Car14 ≥ p'),
+      eq('Product capacity and maximum growth', String.raw`\begin{aligned}
+S\mathbf{v}&=\mathbf{0},\qquad \mathbf{l}\leq\mathbf{v}\leq\mathbf{u},\\
+\text{product capacity}&=\max_{\mathbf{v}}\ v_{\mathrm{Car14}},\\
+\mu_{\max}(p)&=\max_{\mathbf{v}}\ v_{\mathrm{biomass}}\\
+\text{subject to}\quad S\mathbf{v}&=\mathbf{0},\quad \mathbf{l}\leq\mathbf{v}\leq\mathbf{u},\quad v_{\mathrm{Car14}}\geq p.
+\end{aligned}`),
       p('S is the internal-species stoichiometric matrix and v is the reaction-flux vector. SciPy linear programming maximizes Car14 to obtain product capacity. The product lower bound p is then increased over 41 equally spaced values between zero and maximum capacity, maximizing biomass at each value. Reaction fluxes are in mmol gDW⁻¹ h⁻¹ and the biomass flux is interpreted in h⁻¹.'),
     ),
     section('LCYB bounds and the growth–product relationship',

@@ -1,6 +1,16 @@
 import { Link } from 'react-router-dom';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import type { ContentBlock } from './content/types';
 import './article-blocks.css';
+
+const renderEquation = (latex: string) => katex.renderToString(latex, {
+  displayMode: true,
+  output: 'htmlAndMathml',
+  throwOnError: true,
+  strict: false,
+  trust: false,
+});
 
 function resolveAsset(src: string) {
   if (/^(?:https?:|data:|blob:|\/\/)/i.test(src)) return src;
@@ -24,7 +34,7 @@ export function ArticleBlocks({ blocks }: { blocks: ContentBlock[] }) {
     switch (block.kind) {
       case 'paragraph': return <p key={i}>{block.text}</p>;
       case 'heading': return <h3 key={i}>{block.text}</h3>;
-      case 'equation': return <div className="research-equation" role="region" aria-label={block.label} tabIndex={0} key={i}><pre>{block.text}</pre></div>;
+      case 'equation': return <div className="research-equation" role="region" aria-label={block.label} tabIndex={0} key={i} dangerouslySetInnerHTML={{ __html: renderEquation(block.text) }} />;
       case 'code': return <div className="research-code" key={i}><p>{block.label}</p><pre tabIndex={0}><code>{block.text}</code></pre></div>;
       case 'figure': return <figure className="feature-figure research-figure" key={i}><a href={resolveAsset(block.src)} aria-label={`Open full-size figure: ${block.alt}`}><img src={resolveAsset(block.src)} alt={block.alt} loading="lazy" decoding="async" /></a><figcaption>{block.caption}<span className="figure-credit">Team analysis figure · CC BY 4.0</span></figcaption></figure>;
       case 'table': return <DataTable key={i} block={block} />;
