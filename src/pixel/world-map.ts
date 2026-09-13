@@ -17,14 +17,12 @@ export const WORLD_H = MAP_H * TILE;
 // Route
 // ---------------------------------------------------------------------------
 
-/** Vertical boardwalk, from the northern trailhead to the southern archive. */
+/** Winding north-to-south mountain boardwalk through the salt-lake foothills. */
 const WAYPOINTS: Array<[number, number]> = [
-  [54, 8],
-  [54, 40],
-  [54, 76],
-  [54, 112],
-  [54, 148],
-  [54, 184],
+  [52, 8], [59, 20], [68, 33], [62, 46],
+  [43, 59], [38, 72], [48, 85], [65, 98],
+  [70, 111], [60, 124], [42, 137], [38, 150],
+  [48, 163], [61, 176], [57, 184],
 ];
 
 export type PathSample = { x: number; y: number; dx: number; dy: number };
@@ -287,6 +285,33 @@ export function buildWorld(): World {
 
   const path = new RoutePath(WAYPOINTS);
 
+  // Layered foothills frame the valley. Keep a generous corridor around the
+  // route so stations, NPC work areas and free-roam approaches remain open.
+  const ridges: Array<[number, number, number, number]> = [
+    [35, 22, 12, 18], [86, 45, 15, 23], [20, 72, 11, 22],
+    [83, 87, 14, 20], [36, 110, 15, 19], [82, 137, 16, 24],
+    [20, 157, 12, 21], [83, 178, 15, 18],
+  ];
+  for (const [cx, cy, rx, ry] of ridges) {
+    for (let ty = Math.max(2, cy - ry - 3); ty < Math.min(MAP_H - 2, cy + ry + 3); ty += 1) {
+      for (let tx = Math.max(2, cx - rx - 3); tx < Math.min(MAP_W - 2, cx + rx + 3); tx += 1) {
+        const x = (tx + .5) * TILE;
+        const y = (ty + .5) * TILE;
+        if (path.points.some((point) => Math.hypot(point.x - x, point.y - y) < 150)) continue;
+        if (isWet(tiles[index(tx, ty)] as Tile)) continue;
+        const nx = (tx - cx) / rx;
+        const ny = (ty - cy) / ry;
+        const contour = Math.hypot(nx, ny)
+          + Math.sin(Math.atan2(ny, nx) * 5 + cy) * .07;
+        if (contour > 1.08) continue;
+        // Warm scree, dark rock face, and a pale upper terrace.
+        tiles[index(tx, ty)] = contour > .88 ? Tile.Sand
+          : contour > .62 ? Tile.Rock
+          : ny > .08 ? Tile.Mineral : Tile.Salt;
+      }
+    }
+  }
+
   // The route is not painted into the tile grid: stamping a curve onto 16px
   // cells produces visible staircases. It is a ribbon of plank quads laid
   // along the spline and rotated to the tangent, plus a tile-resolution mask
@@ -441,6 +466,22 @@ export function buildWorld(): World {
         if (inBounds(tx, ty) && !deckMask[index(tx, ty)]) blocked[index(tx, ty)] = 1;
       }
     }
+  }
+
+  // Weathered rocks and hardy tufts gather along the foothills instead of
+  // being spread uniformly; reuse the established hand-painted pixel atlas.
+  for (let i = 0; i < 360; i += 1) {
+    const [cx, cy, rx, ry] = ridges[i % ridges.length];
+    const angle = hash2(i, 1, 1201) * Math.PI * 2;
+    const radius = .78 + hash2(i, 2, 1207) * .45;
+    const x = (cx + Math.cos(angle) * rx * radius) * TILE;
+    const y = (cy + Math.sin(angle) * ry * radius) * TILE;
+    if (occupied(x, y, 24) || blocked[index(Math.floor(x / TILE), Math.floor(y / TILE))]) continue;
+    if (path.points.some((point) => Math.hypot(point.x - x, point.y - y) < 150)) continue;
+    props.push({
+      sprite: i % 7 === 0 ? "boulderL" : i % 3 === 0 ? "boulderS" : i % 2 === 0 ? "tuftA" : "tuftB",
+      x, y, shadow: i % 3 === 0 || i % 7 === 0 ? "medium" : "none",
+    });
   }
 
   // Salt crystals across the open flats, denser away from the route.
