@@ -8,8 +8,8 @@ import { hash2 } from "./paint";
 import { ARCHIVE_COPY, STATION_COPY, type StationCopy } from "./station-copy";
 import { TILE, Tile, isWet, plateIdAt } from "./tiles";
 
-export const MAP_W = 192;
-export const MAP_H = 108;
+export const MAP_W = 108;
+export const MAP_H = 192;
 export const WORLD_W = MAP_W * TILE;
 export const WORLD_H = MAP_H * TILE;
 
@@ -17,24 +17,14 @@ export const WORLD_H = MAP_H * TILE;
 // Route
 // ---------------------------------------------------------------------------
 
-/** Boardwalk waypoints in tile space, west shore to the archive. */
+/** Vertical boardwalk, from the northern trailhead to the southern archive. */
 const WAYPOINTS: Array<[number, number]> = [
-  [8, 84],
-  [18, 76],
-  [30, 79],
-  [42, 66],
-  [54, 58],
-  [66, 63],
-  [78, 71],
-  [90, 64],
-  [100, 50],
-  [112, 45],
-  [124, 55],
-  [136, 58],
-  [148, 48],
-  [160, 40],
-  [172, 45],
-  [184, 36],
+  [54, 8],
+  [54, 40],
+  [54, 76],
+  [54, 112],
+  [54, 148],
+  [54, 184],
 ];
 
 export type PathSample = { x: number; y: number; dx: number; dy: number };
@@ -244,15 +234,15 @@ function stampBands(tiles: Uint8Array) {
 export function buildWorld(): World {
   const tiles = new Uint8Array(MAP_W * MAP_H).fill(Tile.Salt);
 
-  // Broad terrain bands: open lake along the north edge, crust in the middle,
-  // mud and reed flats along the south.
+  // Broad terrain bands: open lake along the west edge, crust in the middle,
+  // mud and reed flats along the east.
   for (let ty = 0; ty < MAP_H; ty += 1) {
     for (let tx = 0; tx < MAP_W; tx += 1) {
-      const shore = 12 + Math.sin(tx * 0.055) * 5 + Math.sin(tx * 0.017 + 2) * 4;
-      if (ty < shore - 5) tiles[index(tx, ty)] = Tile.WaterDeep;
-      else if (ty < shore) tiles[index(tx, ty)] = Tile.Water;
-      else if (ty < shore + 3) tiles[index(tx, ty)] = Tile.Sand;
-      else if (ty > MAP_H - 8) tiles[index(tx, ty)] = Tile.Mud;
+      const shore = 12 + Math.sin(ty * 0.055) * 5 + Math.sin(ty * 0.017 + 2) * 4;
+      if (tx < shore - 5) tiles[index(tx, ty)] = Tile.WaterDeep;
+      else if (tx < shore) tiles[index(tx, ty)] = Tile.Water;
+      else if (tx < shore + 3) tiles[index(tx, ty)] = Tile.Sand;
+      else if (tx > MAP_W - 8) tiles[index(tx, ty)] = Tile.Mud;
       else if (hash2(Math.abs(plateIdAt(tx, ty)) % 4093, 0, 5) > 0.86) tiles[index(tx, ty)] = Tile.SaltDamp;
     }
   }
@@ -271,7 +261,7 @@ export function buildWorld(): World {
     [178, 58, 9, 5, Tile.Water, Tile.WaterDeep],
   ];
   ponds.forEach(([cx, cy, rx, ry, shallow, deep], i) => {
-    stampEllipse(tiles, cx, cy, rx, ry, shallow, deep, 100 + i * 7);
+    stampEllipse(tiles, cy, cx, ry, rx, shallow, deep, 100 + i * 7);
   });
 
   // Algae mats: small, and only where the crust is already wet. Large mats
@@ -542,7 +532,7 @@ export function buildWorld(): World {
   props.push({ sprite: "signArchive", x: gate.x - 40, y: gate.y + 12, shadow: "small" });
 
   // A moored boat or two on the open water.
-  for (const [bx, by] of [[58, 17], [126, 14], [166, 19]] as Array<[number, number]>) {
+  for (const [bx, by] of [[17, 58], [14, 126], [19, 166]] as Array<[number, number]>) {
     props.push({ sprite: "boat", x: bx * TILE, y: by * TILE, shadow: "none" });
   }
 
