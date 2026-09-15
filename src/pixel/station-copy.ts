@@ -21,6 +21,8 @@ export type StationCopy = {
   u: number;
   /** Lateral offset from the route in pixels; negative is left of travel. */
   offset: number;
+  /** Guided-camera lift in world pixels, used to keep tall signs below the header. */
+  cameraLift?: number;
   sprite: string;
 };
 
@@ -51,6 +53,7 @@ export const STATION_COPY: StationCopy[] = [
     accent: "s",
     u: 0.245,
     offset: -88,
+    cameraLift: 84,
     sprite: "the-cell",
   },
   {
@@ -79,6 +82,7 @@ export const STATION_COPY: StationCopy[] = [
     accent: "u",
     u: 0.575,
     offset: -86,
+    cameraLift: 72,
     sprite: "model-station",
   },
   {
@@ -107,6 +111,7 @@ export const STATION_COPY: StationCopy[] = [
     accent: "w",
     u: 0.885,
     offset: -84,
+    cameraLift: 72,
     sprite: "commons",
   },
 ];

@@ -723,8 +723,9 @@ export class PixelEngine {
         const weight = Math.max(0, 1 - Math.abs(this.u - station.u) / 0.08);
         if (weight <= 0) continue;
         const ease = weight * weight * (3 - 2 * weight);
+        const cameraLift = station.cameraLift ?? 24;
         leadX += (station.x - this.hero.x) * 0.5 * ease;
-        leadY += (station.y - 24 - this.hero.y) * 0.5 * ease;
+        leadY += (station.y - cameraLift - this.hero.y) * 0.5 * ease;
       }
     }
     const ease = 1 - Math.exp(-(this.mode === "free" ? 7.5 : 5.2) * delta);
