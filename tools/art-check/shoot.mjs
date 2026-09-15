@@ -31,8 +31,9 @@ function guidedCamera(u, hero) {
     const weight = Math.max(0, 1 - Math.abs(u - station.u) / 0.08);
     if (weight <= 0) continue;
     const eased = weight * weight * (3 - 2 * weight);
+    const cameraLift = station.cameraLift ?? 24;
     x += (station.x - hero.x) * 0.5 * eased;
-    y += (station.y - 24 - hero.y) * 0.5 * eased;
+    y += (station.y - cameraLift - hero.y) * 0.5 * eased;
   }
   return { x: hero.x + x, y: hero.y + y };
 }
