@@ -1,77 +1,54 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "./landing.css";
 
-type LandingPortalProps = {
-  onComplete: () => void;
-};
+// Edit these three scenes to introduce the project without changing the animation.
+const INTRO_SCENES = [
+  { label: "01 / THE CHALLENGE", title: "A world that needs colour.", body: "Natural pigments, flavours and nutrients connect biology with everyday life. How can we make them more sustainably?" },
+  { label: "02 / THE CHASSIS", title: "An idea born in salt.", body: "Meet Dunaliella salina: a salt-adapted microalga with a native β-carotene hub and the potential to become a versatile production platform." },
+  { label: "03 / THE EXPEDITION", title: "One cell. New possibilities.", body: "Explore the DunaTerp project, from chassis engineering and computational models to products and people." },
+];
 
-export function LandingPortal({ onComplete }: LandingPortalProps) {
+export function LandingPortal({ onComplete }: { onComplete: () => void }) {
+  const navigate = useNavigate();
   const [leaving, setLeaving] = useState(false);
+  const [scene, setScene] = useState(0);
+  const [imageState, setImageState] = useState<"loading" | "ready" | "failed">("loading");
   const heroSrc = `${import.meta.env.BASE_URL}landing/dunaterp-salt-lake.png`;
 
   useEffect(() => {
     if (!leaving) return;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reducedMotion) {
-      onComplete();
-      return;
-    }
-    const timer = window.setTimeout(onComplete, 1050);
+    const timer = window.setTimeout(onComplete,
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420);
     return () => window.clearTimeout(timer);
   }, [leaving, onComplete]);
 
+  const story = INTRO_SCENES[scene];
   return (
-    <section
-      className={`landing-portal${leaving ? " is-leaving" : ""}`}
-      aria-label="DunaTerp introduction"
-      inert={leaving}
-    >
-      <div className="landing-visual" aria-hidden="true">
-        <img src={heroSrc} alt="" fetchPriority="high" />
-      </div>
-      <div className="landing-shade" aria-hidden="true" />
-
+    <section className={`landing-portal${leaving ? " is-leaving" : ""}`} aria-label="DunaTerp introduction" inert={leaving}>
       <header className="landing-header">
-        <div className="landing-mini-brand">
-          <span>DT</span>
-          <p>DUNATERP<small>SCU–CHINA · iGEM 2026</small></p>
-        </div>
-        <p className="landing-coordinate">30.67° N · SALT FLAT 01</p>
+        <div className="landing-mini-brand"><span>DT</span><p>DUNATERP<small>SCU–CHINA · iGEM 2026</small></p></div>
+        <button className="landing-skip" type="button" onClick={() => setLeaving(true)}>Skip intro →</button>
       </header>
-
+      <div className={`landing-visual is-${imageState}`} aria-label="Pixel salt lake landscape" role="img">
+        <div className="landing-scenery" aria-hidden="true"><i className="landing-sun" /><i className="landing-mountains" /><i className="landing-lake" /><i className="landing-boardwalk" /></div>
+        {imageState !== "failed" && <img src={heroSrc} alt="" width="1983" height="793" fetchPriority="high" decoding="async" onLoad={() => setImageState("ready")} onError={() => setImageState("failed")} />}
+        <span className="landing-scene-caption">SALT FLAT 01 · THE EXPEDITION BEGINS</span>
+      </div>
       <div className="landing-content">
-        <p className="landing-kicker"><span /> A SALT-GROWN SPECTRUM</p>
-        <h1>
-          <span>DUNA</span>
-          <em>TERP</em>
-        </h1>
-        <p className="landing-dek">
-          Follow a salt-adapted cell from its native β-carotene hub to a modular platform for colourful, high-value terpenoids.
-        </p>
-        <div className="landing-actions">
-          <button type="button" onClick={() => setLeaving(true)} disabled={leaving}>
-            <span className="landing-action-icon" aria-hidden="true">▶</span>
-            <span><strong>Enter the salt lake</strong><small>Launch pixel expedition</small></span>
-          </button>
-          <Link to="/wiki-map">
-            <strong>Open the field archive</strong>
-            <span aria-hidden="true">↗</span>
-          </Link>
+        <div className="landing-title"><p className="landing-kicker">A SALT-GROWN SPECTRUM</p><h1>Duna<em>Terp</em></h1><p>Small cell. A colourful future.</p></div>
+        <div className="landing-story">
+          <div className="landing-story-copy" key={scene} aria-live="polite"><p className="landing-kicker">{story.label}</p><h2>{story.title}</h2><p>{story.body}</p></div>
+          <div className="landing-story-controls">
+            <div className="landing-scene-dots" aria-label="Introduction scenes">{INTRO_SCENES.map((item, index) => <button type="button" key={item.label} aria-label={item.label} aria-pressed={scene === index} onClick={() => setScene(index)}>{String(index + 1).padStart(2, "0")}</button>)}</div>
+            <button className="landing-next" type="button" onClick={() => scene < INTRO_SCENES.length - 1 ? setScene(scene + 1) : setLeaving(true)}>{scene < INTRO_SCENES.length - 1 ? "Next scene →" : "Begin expedition →"}</button>
+          </div>
         </div>
       </div>
-
-      <footer className="landing-footer">
-        <p><span>01</span> Halophilic chassis</p>
-        <p><span>02</span> Shared β-carotene hub</p>
-        <p><span>03</span> Four product routes</p>
-        <small>ORIGINAL PIXEL EXPEDITION</small>
+      <footer className="landing-actions">
+        <button type="button" className="landing-action-card" onClick={() => setLeaving(true)}><span>01 / EXPLORE</span><strong>Enter the salt lake <b aria-hidden="true">→</b></strong><small>A compact pixel expedition</small></button>
+        <button type="button" className="landing-action-card landing-action-card--archive" onClick={() => navigate("/wiki-map")}><span>02 / READ</span><strong>Open the field archive <b aria-hidden="true">→</b></strong><small>Go straight to the project chapters</small></button>
       </footer>
-
-      <div className="landing-transition-mark" aria-hidden="true">
-        <span />
-        ENTERING FIELD MAP
-      </div>
     </section>
   );
 }

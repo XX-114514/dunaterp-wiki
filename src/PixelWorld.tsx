@@ -76,6 +76,8 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
   }, [showLanding]);
 
   useEffect(() => {
+    // Let the opening image and story render before preparing the canvas world.
+    if (showLanding) return;
     const host = stage.current;
     const surface = canvas.current;
     if (!host || !surface) return;
@@ -110,7 +112,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
       engine?.dispose();
       engineRef.current = null;
     };
-  }, [navigate]);
+  }, [navigate, showLanding]);
 
   // Guided mode: page scroll drives the walk.
   useEffect(() => {
@@ -215,6 +217,10 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
     requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true }));
   }, []);
 
+  useEffect(() => {
+    engineRef.current?.setPaused(showLanding || dialogueNpc !== null);
+  }, [showLanding, dialogueNpc, ready]);
+
   const activeChapter = chapter >= 0 ? STATION_COPY[chapter] : null;
 
   return (
@@ -224,12 +230,12 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
       ref={root}
       className={`px-world${ready ? " is-ready" : ""}${started ? " is-started" : ""}${mode === "free" ? " is-free" : ""}${atArchive ? " is-archive" : ""}${failed ? " has-failed" : ""}${dialogueNpc ? " has-dialogue" : ""}`}
     >
-      <Header light />
+      <div inert={showLanding}><Header light /></div>
       {showLanding && (
         <LandingPortal onComplete={finishLanding} />
       )}
 
-      <div className="px-sticky">
+      <div className="px-sticky" inert={showLanding}>
         <div
           ref={stage}
           className="px-stage"
@@ -270,15 +276,15 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         </section>
 
         {activeChapter && mode !== "free" && !promptStation && !atArchive && (
-          <aside className="px-hud" style={{ "--px-accent": activeChapter.color } as React.CSSProperties}>
+          <button type="button" onClick={() => navigate(activeChapter.route)} className="px-hud px-chapter-card" style={{ "--px-accent": activeChapter.color } as React.CSSProperties}>
             <span className="px-hud-index">{activeChapter.index}</span>
             <div>
               <p className="px-hud-kicker">{activeChapter.kicker}</p>
               <h2>{activeChapter.title}</h2>
               <p className="px-hud-body">{activeChapter.body}</p>
-              <Link to={activeChapter.route}>Open this chapter <span aria-hidden="true">↗</span></Link>
+              <span className="px-card-action">Explore chapter →</span>
             </div>
-          </aside>
+          </button>
         )}
 
         {mode === "free" && <ExpeditionJournal
@@ -292,18 +298,17 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         </div>}
 
         {promptStation && !dialogueNpc && (
-          <div
-            className="px-prompt"
+          <button type="button"
+            className="px-prompt px-chapter-card"
+            onClick={() => navigate(promptStation.route)}
             style={{ "--px-accent": promptStation.color } as React.CSSProperties}
           >
             <span className="px-prompt-key">{mode === "free" ? "E" : "↵"}</span>
             <div>
               <p>{promptStation.index} · {promptStation.kicker}</p>
-              <button type="button" onClick={() => navigate(promptStation.route)}>
-                Enter {promptStation.title} <span aria-hidden="true">↗</span>
-              </button>
+              <strong>{promptStation.title} <span aria-hidden="true">→</span></strong>
             </div>
-          </div>
+          </button>
         )}
 
         {mode === "free" && !dialogueNpc && <div className="px-dpad" role="group" aria-label="Movement controls">
@@ -368,7 +373,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
                 <p className="px-archive-note">{GROUP_NOTES[index]}</p>
                 <nav aria-label={group.label}>
                   {group.items.map(([label, href]) => (
-                    <Link key={href} to={href}>{label}<b aria-hidden="true">↗</b></Link>
+                    <button type="button" className="px-archive-card" key={href} onClick={() => navigate(href)}>{label}<b aria-hidden="true">→</b></button>
                   ))}
                 </nav>
               </section>
@@ -381,7 +386,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         </section>
       </div>
 
-      <div className="px-scroll-story" inert={ready}>
+      <div className="px-scroll-story" inert={ready || showLanding}>
         <div className="px-scroll-lead" aria-hidden="true" />
         {STATION_COPY.map((station, index) => (
           <section
@@ -390,12 +395,12 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
             style={{ "--px-accent": station.color } as React.CSSProperties}
             aria-labelledby={`px-chapter-${station.index}`}
           >
-            <div>
+            <button type="button" className="px-fallback-card" onClick={() => navigate(station.route)}>
               <p className="px-chapter-tag"><span>{station.index} / 06</span>{station.kicker}</p>
               <h2 id={`px-chapter-${station.index}`}>{station.title}</h2>
               <p>{station.body}</p>
-              <Link to={station.route}>Explore this chapter <span aria-hidden="true">↗</span></Link>
-            </div>
+              <span className="px-card-action">Explore chapter →</span>
+            </button>
           </section>
         ))}
         <div className="px-archive-space" aria-hidden="true" />
