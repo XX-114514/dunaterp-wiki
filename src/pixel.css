@@ -15,13 +15,13 @@
   --px-edge: 3px;
 
   position: relative;
-  min-height: 760svh;
+  min-height: 460svh;
   background: var(--px-deep);
   color: var(--px-salt);
   overflow: clip;
 }
 
-.px-world > .site-header {
+.px-world > div > .site-header {
   position: fixed;
   inset: 0 0 auto;
   z-index: 40;
@@ -58,7 +58,7 @@
 .px-hud,
 .px-prompt,
 .px-archive > div > section,
-.px-scroll-chapter > div {
+.px-scroll-chapter > .px-fallback-card {
   border: var(--px-edge) solid var(--px-ink);
   border-radius: 0;
   box-shadow: 6px 6px 0 rgba(6, 34, 31, 0.55);
@@ -469,11 +469,11 @@
 /* --- scroll story ------------------------------------------------------- */
 
 .px-scroll-story { position: relative; z-index: 2; margin-top: -100svh; pointer-events: none; }
-.px-scroll-lead { height: 100svh; }
-.px-archive-space { height: 130svh; }
+.px-scroll-lead { height: 65svh; }
+.px-archive-space { height: 65svh; }
 
 .px-scroll-chapter {
-  min-height: 100svh;
+  min-height: 55svh;
   display: flex;
   align-items: center;
   padding: 0 clamp(1.2rem, 6vw, 7rem);
@@ -481,7 +481,7 @@
 
 .px-scroll-chapter.is-right { justify-content: flex-end; }
 
-.px-scroll-chapter > div {
+.px-scroll-chapter > .px-fallback-card {
   width: min(28rem, 100%);
   padding: 1.2rem;
   background: rgba(6, 34, 31, .9);
@@ -491,7 +491,7 @@
 
 /* The HUD carries the active chapter; these blocks exist for keyboard users,
    screen readers and no-canvas fallback, and stay visually quiet. */
-.px-world:not(.is-ready) .px-scroll-chapter > div { opacity: 1; }
+.px-world:not(.is-ready) .px-scroll-chapter > .px-fallback-card { opacity: 1; }
 
 .px-chapter-tag {
   display: flex;
@@ -541,7 +541,7 @@
 }
 
 /* Expedition usability: keep the lake reachable beneath quiet story panels. */
-.px-world.is-ready .px-scroll-chapter > div { pointer-events: none; }
+.px-world.is-ready .px-scroll-chapter > .px-fallback-card { pointer-events: none; }
 .px-world.is-free .px-sticky { position: fixed; inset: 0; }
 .px-world button:disabled { opacity: .55; cursor: wait; }
 .px-world :is(button, a, canvas):focus-visible { outline: 3px solid #7de2ff; outline-offset: 4px; }
@@ -572,3 +572,16 @@
   .px-world.is-free .px-controls { max-width: calc(100% - 10.5rem); }
   .px-world.is-free .px-mode { font-size: .875rem; letter-spacing: 0; padding: .7rem .5rem; }
 }
+
+/* Whole-card chapter navigation, with no nested interactive targets. */
+.px-chapter-card, .px-fallback-card { color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.px-card-action { display: block; margin-top: .75rem; color: var(--px-accent); font: 800 .72rem monospace; text-transform: uppercase; }
+.px-chapter-card:hover, .px-fallback-card:hover { border-color: var(--px-accent); }
+.px-hud { max-width: 25rem; }
+.px-hud h2 { font-size: clamp(1.25rem, 2vw, 1.7rem); }
+.px-hud-body { font-size: .86rem; }
+.px-archive-grid nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+.px-archive-card { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 3.25rem; padding: .7rem; border: 1px solid #fff5db33; background: #06221f; color: var(--px-salt); text-align: left; font: 700 .76rem/1.4 monospace; cursor: pointer; }
+.px-archive-card:hover { border-color: var(--px-accent); color: var(--px-accent); }
+@media (max-width: 800px) { .px-hud { max-width: none; } }
+.px-prompt.px-chapter-card { color: var(--px-ink); }

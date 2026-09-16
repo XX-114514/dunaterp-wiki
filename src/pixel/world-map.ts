@@ -8,8 +8,8 @@ import { hash2 } from "./paint";
 import { ARCHIVE_COPY, STATION_COPY, type StationCopy } from "./station-copy";
 import { TILE, Tile, isWet, plateIdAt } from "./tiles";
 
-export const MAP_W = 108;
-export const MAP_H = 192;
+export const MAP_W = 84;
+export const MAP_H = 120;
 export const WORLD_W = MAP_W * TILE;
 export const WORLD_H = MAP_H * TILE;
 
@@ -19,10 +19,10 @@ export const WORLD_H = MAP_H * TILE;
 
 /** Winding north-to-south mountain boardwalk through the salt-lake foothills. */
 const WAYPOINTS: Array<[number, number]> = [
-  [52, 8], [59, 20], [68, 33], [62, 46],
-  [43, 59], [38, 72], [48, 85], [65, 98],
-  [70, 111], [60, 124], [42, 137], [38, 150],
-  [48, 163], [61, 176], [57, 184],
+  [40, 7], [46, 15], [53, 23], [48, 31],
+  [34, 39], [30, 47], [38, 55], [50, 63],
+  [54, 71], [47, 79], [33, 87], [30, 95],
+  [38, 103], [47, 109], [44, 114],
 ];
 
 export type PathSample = { x: number; y: number; dx: number; dy: number };
@@ -259,7 +259,7 @@ export function buildWorld(): World {
     [178, 58, 9, 5, Tile.Water, Tile.WaterDeep],
   ];
   ponds.forEach(([cx, cy, rx, ry, shallow, deep], i) => {
-    stampEllipse(tiles, cy, cx, ry, rx, shallow, deep, 100 + i * 7);
+    stampEllipse(tiles, cy * 0.78, cx * 0.60, ry * 0.78, rx * 0.60, shallow, deep, 100 + i * 7);
   });
 
   // Algae mats: small, and only where the crust is already wet. Large mats
@@ -288,9 +288,9 @@ export function buildWorld(): World {
   // Layered foothills frame the valley. Keep a generous corridor around the
   // route so stations, NPC work areas and free-roam approaches remain open.
   const ridges: Array<[number, number, number, number]> = [
-    [35, 22, 12, 18], [86, 45, 15, 23], [20, 72, 11, 22],
-    [83, 87, 14, 20], [36, 110, 15, 19], [82, 137, 16, 24],
-    [20, 157, 12, 21], [83, 178, 15, 18],
+    [27, 13, 9, 11], [67, 27, 12, 14], [16, 43, 9, 13],
+    [65, 52, 11, 12], [28, 66, 12, 11], [64, 82, 12, 14],
+    [16, 94, 9, 13], [65, 107, 12, 11],
   ];
   for (const [cx, cy, rx, ry] of ridges) {
     for (let ty = Math.max(2, cy - ry - 3); ty < Math.min(MAP_H - 2, cy + ry + 3); ty += 1) {
@@ -470,7 +470,7 @@ export function buildWorld(): World {
 
   // Weathered rocks and hardy tufts gather along the foothills instead of
   // being spread uniformly; reuse the established hand-painted pixel atlas.
-  for (let i = 0; i < 360; i += 1) {
+  for (let i = 0; i < 200; i += 1) {
     const [cx, cy, rx, ry] = ridges[i % ridges.length];
     const angle = hash2(i, 1, 1201) * Math.PI * 2;
     const radius = .78 + hash2(i, 2, 1207) * .45;
@@ -485,7 +485,7 @@ export function buildWorld(): World {
   }
 
   // Salt crystals across the open flats, denser away from the route.
-  for (let i = 0; i < 640; i += 1) {
+  for (let i = 0; i < 340; i += 1) {
     const x = 40 + hash2(i, 1, 501) * (WORLD_W - 80);
     const y = 40 + hash2(i, 2, 503) * (WORLD_H - 80);
     if (occupied(x, y, 14)) continue;
@@ -499,7 +499,7 @@ export function buildWorld(): World {
   }
 
   // Reeds and algae tufts hug the shoreline.
-  for (let i = 0; i < 620; i += 1) {
+  for (let i = 0; i < 330; i += 1) {
     const x = 30 + hash2(i, 4, 509) * (WORLD_W - 60);
     const y = 30 + hash2(i, 5, 521) * (WORLD_H - 60);
     const tx = Math.floor(x / TILE);
@@ -533,7 +533,7 @@ export function buildWorld(): World {
   }
 
   // Route furniture: marker posts along the whole walk, lamps at intervals.
-  const markerSteps = 46;
+  const markerSteps = 28;
   for (let step = 1; step < markerSteps; step += 1) {
     const u = step / markerSteps;
     const sample = path.sample(u);
@@ -573,7 +573,7 @@ export function buildWorld(): World {
   props.push({ sprite: "signArchive", x: gate.x - 40, y: gate.y + 12, shadow: "small" });
 
   // A moored boat or two on the open water.
-  for (const [bx, by] of [[17, 58], [14, 126], [19, 166]] as Array<[number, number]>) {
+  for (const [bx, by] of [[17, 35], [14, 76], [19, 100]] as Array<[number, number]>) {
     props.push({ sprite: "boat", x: bx * TILE, y: by * TILE, shadow: "none" });
   }
 
