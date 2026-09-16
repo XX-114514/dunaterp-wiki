@@ -43,7 +43,7 @@ html = html.replace(/<script[^>]*src="([^"]+)"[^>]*><\/script>/g, (_, src) => {
 
 // Inline the favicon and every public image referenced by the application.
 html = html.replace(/href="\.\/favicon\.svg"/g, () => `href="${dataUri(path.join(publicDir, "favicon.svg"))}"`);
-for (const directory of ["figures", "landing"]) {
+for (const directory of ["figures"]) {
   for (const image of filesBelow(path.join(publicDir, directory))) {
     const publicPath = path.relative(publicDir, image).split(path.sep).join("/");
     html = html.split(publicPath).join(dataUri(image));

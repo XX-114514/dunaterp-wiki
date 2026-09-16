@@ -10,7 +10,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { PixelEngine, type Mode } from "./pixel/engine";
 import { ARCHIVE_COPY, STATION_COPY } from "./pixel/station-copy";
 import { ExpeditionJournal } from "./ExpeditionJournal";
-import { LandingPortal } from "./LandingPortal";
 import { NpcDialogue } from "./NpcDialogue";
 import type { Npc } from "./pixel/npc-data";
 import { navigation } from "./site-data";
@@ -61,7 +60,6 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
   const [promptKey, setPromptKey] = useState<string | null>(null);
   const [atArchive, setAtArchive] = useState(false);
   const [started, setStarted] = useState(false);
-  const [showLanding, setShowLanding] = useState(true);
 
   const promptStation = useMemo(
     () => [...STATION_COPY, ARCHIVE_COPY].find((item) => item.key === promptKey) ?? null,
@@ -69,15 +67,6 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
   );
 
   useEffect(() => {
-    if (!showLanding) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previous; };
-  }, [showLanding]);
-
-  useEffect(() => {
-    // Let the opening image and story render before preparing the canvas world.
-    if (showLanding) return;
     const host = stage.current;
     const surface = canvas.current;
     if (!host || !surface) return;
@@ -112,7 +101,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
       engine?.dispose();
       engineRef.current = null;
     };
-  }, [navigate, showLanding]);
+  }, [navigate]);
 
   // Guided mode: page scroll drives the walk.
   useEffect(() => {
@@ -212,15 +201,6 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
     requestAnimationFrame(() => requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })));
   }, []);
 
-  const finishLanding = useCallback(() => {
-    setShowLanding(false);
-    requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true }));
-  }, []);
-
-  useEffect(() => {
-    engineRef.current?.setPaused(showLanding || dialogueNpc !== null);
-  }, [showLanding, dialogueNpc, ready]);
-
   const activeChapter = chapter >= 0 ? STATION_COPY[chapter] : null;
 
   return (
@@ -230,12 +210,9 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
       ref={root}
       className={`px-world${ready ? " is-ready" : ""}${started ? " is-started" : ""}${mode === "free" ? " is-free" : ""}${atArchive ? " is-archive" : ""}${failed ? " has-failed" : ""}${dialogueNpc ? " has-dialogue" : ""}`}
     >
-      <div inert={showLanding}><Header light /></div>
-      {showLanding && (
-        <LandingPortal onComplete={finishLanding} />
-      )}
+      <Header light />
 
-      <div className="px-sticky" inert={showLanding}>
+      <div className="px-sticky">
         <div
           ref={stage}
           className="px-stage"
@@ -386,7 +363,7 @@ export function PixelWorld({ Header }: { Header: ComponentType<HeaderProps> }) {
         </section>
       </div>
 
-      <div className="px-scroll-story" inert={ready || showLanding}>
+      <div className="px-scroll-story" inert={ready}>
         <div className="px-scroll-lead" aria-hidden="true" />
         {STATION_COPY.map((station, index) => (
           <section

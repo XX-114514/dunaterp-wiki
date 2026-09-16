@@ -21,7 +21,7 @@
   overflow: clip;
 }
 
-.px-world > div > .site-header {
+.px-world > .site-header {
   position: fixed;
   inset: 0 0 auto;
   z-index: 40;
